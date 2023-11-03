@@ -25,14 +25,33 @@ extern comb_logic_t copy_w_ctl_sigs(w_ctl_sigs_t *, w_ctl_sigs_t *);
  * Memory stage logic.
  * STUDENT TO-DO:
  * Implement the memory stage.
- * 
+ *
  * Use in as the input pipeline register,
  * and update the out pipeline register as output.
- * 
+ *
  * You will need the following helper functions:
  * copy_w_ctl_signals and dmem.
  */
 
-comb_logic_t memory_instr(m_instr_impl_t *in, w_instr_impl_t *out) {
+comb_logic_t memory_instr(m_instr_impl_t *in, w_instr_impl_t *out)
+{
+    copy_w_ctl_sigs(&(out->W_sigs), &(in->W_sigs));
+    bool x = 0;
+
+    if (in->M_sigs.dmem_read || in->M_sigs.dmem_write)
+    {
+        dmem(in->val_ex, in->val_b, in->M_sigs.dmem_read,
+             in->M_sigs.dmem_read, &(out->val_mem), &x);
+    }
+    out->dst = in->dst;
+    out->val_ex = in->val_ex;
+    out->val_b = in->val_b;
+    out->status = in->status;
+    out->print_op = in->print_op;
+
+    if (x)
+    {
+        out->status = STAT_ADR;
+    }
     return;
 }

@@ -28,14 +28,36 @@ extern comb_logic_t copy_w_ctl_sigs(w_ctl_sigs_t *, w_ctl_sigs_t *);
  * Execute stage logic.
  * STUDENT TO-DO:
  * Implement the execute stage.
- * 
+ *
  * Use in as the input pipeline register,
  * and update the out pipeline register as output.
- * 
+ *
  * You will need the following helper functions:
  * copy_m_ctl_signals, copy_w_ctl_signals, and alu.
  */
 
-comb_logic_t execute_instr(x_instr_impl_t *in, m_instr_impl_t *out) {
+comb_logic_t execute_instr(x_instr_impl_t *in, m_instr_impl_t *out)
+{
+    out->print_op = in->print_op;
+    out->seq_succ_PC = in->seq_succ_PC;
+    out->status = in->status;
+    copy_m_ctl_sigs(&(out->M_sigs), &(in->M_sigs));
+    copy_w_ctl_sigs(&(out->W_sigs), &(in->W_sigs));
+    out->op = in->op;
+
+    out->val_b = in->val_b;
+
+    uint64_t v = in->X_sigs.valb_sel ? in->val_b : in->val_imm;
+
+    if (in->op == OP_BL)
+    {
+        in->val_a = in->seq_succ_PC;
+    }
+
+    alu(in->val_a, v, in->val_hw, in->ALU_op, in->X_sigs.set_CC, in->cond, &(out->val_ex), &(X_condval));
+
+    out->cond_holds = X_condval;
+    out->dst = in->dst;
+
     return;
 }
