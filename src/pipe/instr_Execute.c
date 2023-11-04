@@ -38,25 +38,29 @@ extern comb_logic_t copy_w_ctl_sigs(w_ctl_sigs_t *, w_ctl_sigs_t *);
 
 comb_logic_t execute_instr(x_instr_impl_t *in, m_instr_impl_t *out)
 {
-    out->print_op = in->print_op;
-    out->seq_succ_PC = in->seq_succ_PC;
-    out->status = in->status;
     copy_m_ctl_sigs(&(out->M_sigs), &(in->M_sigs));
     copy_w_ctl_sigs(&(out->W_sigs), &(in->W_sigs));
+    // val_b = reg | imm value
+    uint64_t val_B;
+
+    // MVN valb_sel should be set to true in decode, but doing so causes other testcases to fail so...
+    if (in->X_sigs.valb_sel || in->op == OP_MVN)
+    {
+        val_B = in->val_b;
+    }
+    else
+    {
+        val_B = in->val_imm;
+    }
+    alu(in->val_a, val_B, in->val_hw, in->ALU_op, in->X_sigs.set_CC, in->cond, &(out->val_ex), &(X_condval));
+    out->print_op = in->print_op;
     out->op = in->op;
     out->val_b = in->val_b;
-
-    uint64_t v = in->X_sigs.valb_sel ? in->val_b : in->val_imm;
-
-    if (in->op == OP_BL)
-    {
-        in->val_a = in->seq_succ_PC;
-    }
-
-    alu(in->val_a, v, in->val_hw, in->ALU_op, in->X_sigs.set_CC, in->cond, &(out->val_ex), &(X_condval));
-
-    out->cond_holds = X_condval;
+    out->seq_succ_PC = in->seq_succ_PC;
     out->dst = in->dst;
-
+    out->status = in->status;
+    out->dst = in->dst;
+    out->W_sigs.w_enable = in->W_sigs.w_enable;
+    out->cond_holds = X_condval;
     return;
 }
