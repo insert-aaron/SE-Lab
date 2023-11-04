@@ -4,6 +4,8 @@
  * instr_Fetch.c - Fetch stage of instruction processing pipeline.
  **************************************************************************/
 
+/* Code constructed by Aaron Alvarez (aa88379) and Ryan Passaro(rjp2827)*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -91,17 +93,13 @@ predict_PC(uint64_t current_PC, uint32_t insnbits, opcode_t op,
     case OP_BL:
         // extract the imm26 for B1
         *predicted_PC = current_PC + bitfield_s64(insnbits, 0, 26) * 4;
-        // HELPME: What to do for seq_succ here? Is it different for B and BL?
         break;
     case OP_B_COND:
-        // B2 format
         *predicted_PC = current_PC + bitfield_s64(insnbits, 5, 19) * 4;
-        //*predicted_PC = current_PC + ((insnbits >> 5) & 0x7FFFF) * 4;
         break;
     case OP_ADRP:
         *predicted_PC = current_PC + 4;
         *seq_succ = *predicted_PC & 0xFFFFF000;
-        // *predicted_PC = current_PC + (((bitfield_u32(insnbits, 5, 19) << 2) | bitfield_u32(insnbits, 29, 2)) << 12);
         break;
     default:
         *predicted_PC = *seq_succ;

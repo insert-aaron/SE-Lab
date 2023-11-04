@@ -2,7 +2,9 @@
  * C S 429 architecture emulator
  * 
  * instr_Writeback.c - Writeback stage of instruction processing pipeline.
- **************************************************************************/ 
+ **************************************************************************/
+
+/* Code constructed by Aaron Alvarez (aa88379) and Ryan Passaro(rjp2827)*/
 
 #include <stdio.h>
 #include <stdlib.h>

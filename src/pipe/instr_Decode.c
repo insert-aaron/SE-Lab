@@ -4,6 +4,10 @@
  * instr_Decode.c - Decode stage of instruction processing pipeline.
  **************************************************************************/
 
+/* Code constructed by Aaron Alvarez (aa88379) and Ryan Passaro(rjp2827)*/
+
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
