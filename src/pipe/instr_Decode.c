@@ -38,85 +38,6 @@ extern int64_t W_wval;
 static comb_logic_t
 generate_DXMW_control(opcode_t op, d_ctl_sigs_t *D_sigs, x_ctl_sigs_t *X_sigs, m_ctl_sigs_t *M_sigs, w_ctl_sigs_t *W_sigs)
 {
-    /*
-    //akshat version
-    //D sigs
-    if(op == OP_STUR){
-        D_sigs->src2_sel = 1;
-    } else{
-        D_sigs->src2_sel = 0;
-    }
-    //X sigs
-    if(op == OP_ADDS_RR || op == OP_ANDS_RR || op == OP_SUBS_RR || op == OP_CMP_RR || op == OP_TST_RR || op == OP_ORR_RR || op == OP_EOR_RR || op == OP_MVN){
-        X_sigs->valb_sel = 1;
-    } else{
-        X_sigs->valb_sel = 0;
-    }
-    if(op == OP_ADDS_RR || op == OP_ANDS_RR || op == OP_SUBS_RR || op == OP_CMP_RR || op == OP_TST_RR){
-        X_sigs->set_CC = 1;
-    } else{
-        X_sigs->set_CC = 0;
-    }
-    //M sigs
-    M_sigs->dmem_read = 0;
-    M_sigs->dmem_write = 0;
-    if(op == OP_LDUR){
-        M_sigs->dmem_read = 1;
-    }
-    if(op == OP_STUR){
-        M_sigs->dmem_write = 1;
-    }
-    //W sigs
-    W_sigs->dst_sel = 0;
-    W_sigs->dst_sel = 0;
-    if(op == OP_BL){
-        W_sigs->dst_sel = 1;
-    }
-    if(op == OP_LDUR){
-        W_sigs->wval_sel = 1;
-    }
-    W_sigs->w_enable = 1;
-    if(op == OP_STUR || op == OP_B || op == OP_B_COND || op == OP_RET || op == OP_NOP || op == OP_HLT || op == OP_CMP_RR || op == OP_TST_RR || op == OP_ERROR){
-        W_sigs->w_enable = 0;
-    }
-    return;*/
-
-    /*//kathicc version
-    //set defaults
-    D_sigs->src2_sel = 0;
-    X_sigs->set_CC = 0;
-    X_sigs->valb_sel = 0;
-    M_sigs->dmem_read = 0;
-    M_sigs->dmem_write = 0;
-    W_sigs->dst_sel = 0;
-    W_sigs->w_enable = 0;
-    W_sigs->wval_sel = 0;
-
-    if(op == OP_STUR){
-        D_sigs->src2_sel = 1;
-        M_sigs->dmem_write = 1;
-    } else if (op == OP_LDUR){
-        M_sigs->dmem_read = 1;
-        W_sigs->wval_sel = 1;
-        W_sigs->w_enable = 1;
-    } else if (op == OP_ADD_RI || op == OP_SUB_RI || op == OP_LSL || op == OP_LSR || op == OP_ASR){
-        W_sigs->w_enable = 1;
-    } else if (op == OP_ADDS_RR || op == OP_ANDS_RR || op == OP_SUBS_RR) {
-        X_sigs->set_CC = 1;
-        X_sigs->valb_sel = 1;
-        W_sigs->w_enable = 1;
-    } else if (op == OP_CMP_RR || op == OP_TST_RR) {
-        X_sigs->set_CC = 1;
-        X_sigs->valb_sel = 1;
-    } else if (op == OP_ORR_RR || op == OP_EOR_RR || op == OP_MVN) {
-        X_sigs->valb_sel = 1;
-        W_sigs->w_enable = 1;
-    } else if (op == OP_MOVK || op == OP_MOVZ || op == OP_ADRP) {
-        W_sigs->w_enable = 1;
-    } else if(op == OP_BL){
-        W_sigs->dst_sel = 1;
-    }
-    return;*/
 
     if (op == OP_STUR)
     {
@@ -245,6 +166,8 @@ extract_immval(uint32_t insnbits, opcode_t op, int64_t *imm)
     return;
 }
 
+
+
 /*
  * Logic for determining the ALU operation needed for this opcode.
  * STUDENT TO-DO:
@@ -252,11 +175,8 @@ extract_immval(uint32_t insnbits, opcode_t op, int64_t *imm)
  * and write it to *ALU_op.
  */
 static comb_logic_t
-decide_alu_op(opcode_t op, alu_op_t *ALU_op)
-{
-    /*//Karthik version
-
-    if(op == OP_ADD_RI || op == OP_ADDS_RR || op == OP_LDUR || op == OP_STUR || op == OP_ADRP || op == OP_B || op == OP_BL) {
+decide_alu_op(opcode_t op, alu_op_t *ALU_op){
+    if(op == OP_ADD_RI || op == OP_ADDS_RR || op == OP_LDUR || op == OP_STUR || op == OP_ADRP) {
         *ALU_op = PLUS_OP;
     } else if(op == OP_SUB_RI || op == OP_SUBS_RR || op == OP_CMP_RR) {
         *ALU_op = MINUS_OP;
@@ -266,69 +186,22 @@ decide_alu_op(opcode_t op, alu_op_t *ALU_op)
         *ALU_op = OR_OP;
     } else if(op == OP_EOR_RR){
         *ALU_op = EOR_OP;
-    } else if(op == OP_ANDS_RR || op == OP_TST_RR){
+    }else if(op == OP_ANDS_RR || op == OP_TST_RR){
         *ALU_op = AND_OP;
     } else if(op == OP_MOVK || op == OP_MOVZ){
         *ALU_op = MOV_OP;
-    } else if(op == OP_LSL){
+    } else if(op == OP_LSL || op == OP_UBFM){
         *ALU_op = LSL_OP;
     } else if(op == OP_LSR){
         *ALU_op = LSR_OP;
     } else if(op == OP_ASR){
         *ALU_op = ASR_OP;
-    } else if(op == OP_ERROR){
-        *ALU_op = ERROR_OP;
-    } else if(op == OP_RET || op == OP_B_COND || op == OP_HLT || op == OP_NOP){
-        *ALU_op = PASS_A_OP;
-    }
-    return;*/
-
-    if (op == OP_ADD_RI || op == OP_ADDS_RR || op == OP_LDUR || op == OP_STUR || op == OP_ADRP)
-    {
-        *ALU_op = PLUS_OP;
-    }
-    else if (op == OP_SUB_RI || op == OP_SUBS_RR || op == OP_CMP_RR)
-    {
-        *ALU_op = MINUS_OP;
-    }
-    else if (op == OP_MVN)
-    {
-        *ALU_op = NEG_OP;
-    }
-    else if (op == OP_ORR_RR)
-    {
-        *ALU_op = OR_OP;
-    }
-    else if (op == OP_EOR_RR)
-    {
-        *ALU_op = EOR_OP;
-    }
-    else if (op == OP_ANDS_RR || op == OP_TST_RR)
-    {
-        *ALU_op = AND_OP;
-    }
-    else if (op == OP_MOVK || op == OP_MOVZ)
-    {
-        *ALU_op = MOV_OP;
-    }
-    else if (op == OP_LSL || op == OP_UBFM)
-    {
-        *ALU_op = LSL_OP;
-    }
-    else if (op == OP_LSR)
-    {
-        *ALU_op = LSR_OP;
-    }
-    else if (op == OP_ASR)
-    {
-        *ALU_op = ASR_OP;
-    }
-    else if (op == OP_BL || op == OP_RET || op == OP_B || op == OP_B_COND || op == OP_HLT || op == OP_NOP || op == OP_ERROR)
-    {
+    } else if(op == OP_BL || op == OP_RET || op == OP_B || op == OP_B_COND || op == OP_HLT || op == OP_NOP || op == OP_ERROR){
         *ALU_op = PASS_A_OP;
     }
     return;
 }
+
 
 /*
  * Utility functions for copying over control signals across a stage.
@@ -354,56 +227,14 @@ copy_w_ctl_sigs(w_ctl_sigs_t *dest, w_ctl_sigs_t *src)
     return;
 }
 
+// uint8_t remap_register(uint8_t register){
+//     return (register == 31) ? 32 : register;
+// }
+
 comb_logic_t
 extract_regs(uint32_t insnbits, opcode_t op,
              uint8_t *src1, uint8_t *src2, uint8_t *dst)
 {
-    /* Karthik version
-    //M instructions
-    if(op == OP_STUR) {
-        *src1 = (uint8_t) bitfield_u32(insnbits, 5, 5);
-        *src2 = (uint8_t) bitfield_u32(insnbits, 0, 5);
-        *dst = (uint8_t) bitfield_u32(insnbits, 0, 5);
-    } else if(op == OP_LDUR){
-        *src1 = (uint8_t) bitfield_u32(insnbits, 5, 5);
-        *src2 = 0;
-        *dst = (uint8_t) bitfield_u32(insnbits, 0, 5);
-    } else if(op == OP_MOVK){ //I1 instructions
-        *src1 = (uint8_t) bitfield_u32(insnbits, 0, 5);
-        *src2 = 0;
-        *dst = (uint8_t) bitfield_u32(insnbits, 0, 5);
-    } else if(op == OP_MOVZ){
-        *src1 = 0;
-        *src2 = 0;
-        *dst = (uint8_t) bitfield_u32(insnbits, 0, 5);
-    } else if(op == OP_ADRP){ //I2 instructions
-        *src1 = (uint8_t) bitfield_u32(insnbits, 5, 19);
-        *src2 = 0;
-        *dst = (uint8_t) bitfield_u32(insnbits, 0, 5);
-    } else if(op == OP_ADDS_RR || op == OP_SUBS_RR ||  op == OP_CMP_RR || op == OP_ORR_RR || op == OP_EOR_RR
-            || op == OP_ANDS_RR || op == OP_TST_RR){ //RR instructions
-        *src1 = (uint8_t) bitfield_u32(insnbits, 5, 5);
-        *src2 = (uint8_t) bitfield_u32(insnbits, 16, 5);
-        *dst = (uint8_t) bitfield_u32(insnbits, 0, 5);
-    } else if(op == OP_MVN){
-        *src1 = 0;
-        *src2 = (uint8_t) bitfield_u32(insnbits, 16, 5);
-        *dst = (uint8_t) bitfield_u32(insnbits, 0, 5);
-    } else if(op == OP_ADD_RI || op == OP_SUB_RI || op == OP_LSL || op == OP_LSR || op == OP_ASR){
-        *src1 = (uint8_t) bitfield_u32(insnbits, 5, 5);
-        *src2 = (uint8_t) bitfield_u32(insnbits, 10, 12);
-        *dst = (uint8_t) bitfield_u32(insnbits, 0, 5);
-    } else if (op == OP_B || op == OP_B_COND || op == OP_BL){ //B1 and B2 instructions
-        *src1 = 0;
-        *src2 = 0;
-        *dst = 0;
-    } else if(op == OP_RET){
-        *src1 = (uint8_t) bitfield_u32(insnbits, 5, 5);
-        *src2 = 0;
-        *dst = 0;
-    }
-    return;*/
-
     if (op == OP_STUR)
     {
         *src2 = insnbits & 0x1FU;
@@ -569,6 +400,7 @@ extract_regs(uint32_t insnbits, opcode_t op,
     }
     return;
 }
+
 
 /*
  * Decode stage logic.

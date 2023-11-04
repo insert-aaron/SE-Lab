@@ -45,16 +45,17 @@ select_PC(uint64_t pred_PC,                                      // The predicte
     }
 
     // Modify starting here.
-    if (M_opcode == OP_B_COND && !M_cond_val)
-    {
+    if (D_opcode == OP_RET && val_a == RET_FROM_MAIN_ADDR){
+        *current_PC = 0; // PC can't be 0 normally.
+        return;
+    }
+    if (M_opcode == OP_B_COND && !M_cond_val){
         *current_PC = seq_succ;
     }
-    else if (D_opcode == OP_RET)
-    {
+    else if (D_opcode == OP_RET){
         *current_PC = val_a;
     }
-    else
-    {
+    else{
         *current_PC = pred_PC;
     }
     return;
@@ -82,43 +83,29 @@ predict_PC(uint64_t current_PC, uint32_t insnbits, opcode_t op,
     }
 
     // Modify starting here.
-    if (op == OP_B || op == OP_BL)
-    { // unconditional branch
-        uint64_t boffset = bitfield_s64(insnbits, 0, 26) * 4;
-        if (boffset < 0)
-        {
-            *predicted_PC = current_PC - (-boffset);
-        }
-        else
-        {
-            *predicted_PC = current_PC + boffset;
-        }
-    }
-    else if (op == OP_B_COND)
+    switch (op)
     {
-        uint64_t boffset = bitfield_s64(insnbits, 5, 19) * 4;
-        if (boffset < 0)
-        {
-            *predicted_PC = current_PC - (-boffset);
-        }
-        else
-        {
-            *predicted_PC = current_PC + boffset;
-        }
-    }
-    else
-    {
+    case OP_B:
+    case OP_BL:
+        // extract the imm26 for B1
+        *predicted_PC = current_PC + bitfield_s64(insnbits, 0, 26) * 4;
+        // HELPME: What to do for seq_succ here? Is it different for B and BL?
+        break;
+    case OP_B_COND:
+        // B2 format
+        *predicted_PC = current_PC + bitfield_s64(insnbits, 5, 19) * 4;
+        //*predicted_PC = current_PC + ((insnbits >> 5) & 0x7FFFF) * 4;
+        break;
+    case OP_ADRP:
         *predicted_PC = current_PC + 4;
+        *seq_succ = *predicted_PC & 0xFFFFF000;
+        // *predicted_PC = current_PC + (((bitfield_u32(insnbits, 5, 19) << 2) | bitfield_u32(insnbits, 29, 2)) << 12);
+        break;
+    default:
+        *predicted_PC = *seq_succ;
+        break;
     }
 
-    if (op == OP_ADRP)
-    {
-        *seq_succ = (current_PC >> 12) << 12;
-    }
-    else
-    {
-        *seq_succ = current_PC + 4;
-    }
     return;
 }
 
@@ -131,35 +118,19 @@ predict_PC(uint64_t current_PC, uint32_t insnbits, opcode_t op,
 
 static void fix_instr_aliases(uint32_t insnbits, opcode_t *op)
 {
-    if (*op == OP_UBFM)
+    switch (*op)
     {
-        // check of lsl or lsr
-        uint32_t immshift = bitfield_u32(insnbits, 10, 6); // instruction value
-        if (immshift == 63)
-        { // 0x3f
-            // all bits = 1
-            *op = OP_LSR;
-        }
-        else
-        {
-            *op = OP_LSL;
-        }
-    }
-    else if (*op == OP_SUBS_RR)
-    {
-        uint32_t immdest = bitfield_u32(insnbits, 0, 5); // instruction value
-        if (immdest == 31)
-        { // 0x1f
-            *op = OP_CMP_RR;
-        }
-    }
-    else if (*op == OP_ANDS_RR)
-    {
-        uint32_t immdest = bitfield_u32(insnbits, 0, 5);
-        if (immdest == 31)
-        {
-            *op = OP_TST_RR;
-        }
+    case OP_UBFM:
+        *op = ((insnbits >> 10) & 0x3F) == 0x3F ? OP_LSR : OP_LSL;
+        break;
+    case OP_SUBS_RR:
+        *op = (insnbits & 0x1F) == 0x1F ? OP_CMP_RR : OP_SUBS_RR;
+        break;
+    case OP_ANDS_RR:
+        *op = (insnbits & 0x1F) == 0x1F ? OP_TST_RR : OP_ANDS_RR;
+        break;
+    default:
+        break;
     }
     return;
 }
@@ -180,16 +151,15 @@ static void fix_instr_aliases(uint32_t insnbits, opcode_t *op)
 
 comb_logic_t fetch_instr(f_instr_impl_t *in, d_instr_impl_t *out)
 {
-    in->status = STAT_AOK;
     bool imem_err = 0;
     uint64_t current_PC;
-    select_PC(in->pred_PC, X_out->op, X_out->val_a, M_out->op, M_out->cond_holds, M_out->seq_succ_PC, &current_PC);
-
+    select_PC(in->pred_PC, X_out->op, X_out->val_a, M_out->op, M_out->cond_holds, M_out->seq_succ_PC, &(current_PC));
+    // select_PC(in->pred_PC, D_out->op, X_in->val_a, M_out->op, M_in->cond_holds, M_out->seq_succ_PC, &current_PC);
     /*
      * Students: This case is for generating HLT instructions
      * to stop the pipeline. Only write your code in the **else** case.
      */
-    if (!current_PC)
+    if (!current_PC || F_in->status == STAT_HLT)
     {
         out->insnbits = 0xD4400000U;
         out->op = OP_HLT;
@@ -198,42 +168,39 @@ comb_logic_t fetch_instr(f_instr_impl_t *in, d_instr_impl_t *out)
     }
     else
     {
-        // write instruction bits
-        imem(current_PC, &(out->insnbits), &imem_err);
-        if (imem_err)
-        { // if out of range or not a multiple of 4
-            in->status = STAT_INS;
-            out->status = STAT_INS;
-            out->op = OP_NOP;
-            out->print_op = OP_NOP;
-        }
-        else
-        {
-            uint32_t opcodeaddr = bitfield_u32(out->insnbits, 21, 11); // extract ins bits
-            out->op = itable[opcodeaddr];                              // get opcode from table
-            // error checks
-            if (out->op == OP_ERROR)
-            {
-                in->status = STAT_INS;
-                out->status = STAT_INS;
-            }
+        // WRITE HERE!
+        // get the insnbits for the current instruction
+        uint32_t iword;
+        imem(current_PC, &(iword), &(imem_err));
 
-            // call predict PC
-            predict_PC(current_PC, out->insnbits, out->op, &(F_PC), &(out->seq_succ_PC));
-            out->print_op = out->op;                          // set print op
-            fix_instr_aliases(out->insnbits, &out->op);       // fix aliases
-            fix_instr_aliases(out->insnbits, &out->print_op); // fix aliases
-        }
+        // decode those bits to get the opcode
+        // extract top 11 bits, send as input to the itable
+        out->op = itable[(iword >> 21) & 0x7FF];
+        fix_instr_aliases(iword, &(out->op));
+        out->print_op = out->op;
+        out->insnbits = iword;
+
+        // call the various fetch helper functions as appropriate
+        predict_PC(current_PC, iword, out->op, &(F_PC), &(out->seq_succ_PC));
     }
 
-    if (out->op == OP_HLT)
+    // Handle errors and set error codes
+
+    // We do not recommend modifying the below code.
+    if (imem_err || out->op == OP_ERROR)
+    {
+        in->status = STAT_INS;
+        F_in->status = in->status;
+    }
+    else if (out->op == OP_HLT)
     {
         in->status = STAT_HLT;
-        out->status = STAT_HLT;
+        F_in->status = in->status;
+    }
+    else
+    {
+        in->status = STAT_AOK;
     }
     out->status = in->status;
-    // adrp special case
-    out->this_PC = out->seq_succ_PC;
-
     return;
 }

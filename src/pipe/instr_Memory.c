@@ -35,23 +35,23 @@ extern comb_logic_t copy_w_ctl_sigs(w_ctl_sigs_t *, w_ctl_sigs_t *);
 
 comb_logic_t memory_instr(m_instr_impl_t *in, w_instr_impl_t *out)
 {
-    copy_w_ctl_sigs(&(out->W_sigs), &(in->W_sigs));
     bool x = 0;
 
-    if (in->M_sigs.dmem_read || in->M_sigs.dmem_write)
-    {
-        dmem(in->val_ex, in->val_b, in->M_sigs.dmem_read,
-             in->M_sigs.dmem_read, &(out->val_mem), &x);
+    if (in->M_sigs.dmem_read || in->M_sigs.dmem_write){
+        dmem(in->val_ex, in->val_b, in->M_sigs.dmem_read, 
+            in->M_sigs.dmem_write, &(out->val_mem), &x);
+        if (x){
+            in->status = STAT_ADR;
+        }
     }
+    out->op = in->op;
     out->dst = in->dst;
     out->val_ex = in->val_ex;
     out->val_b = in->val_b;
     out->status = in->status;
     out->print_op = in->print_op;
-
-    if (x)
-    {
-        out->status = STAT_ADR;
-    }
+    copy_w_ctl_sigs(&(out->W_sigs), &(in->W_sigs));
+    out->val_ex =in->val_ex;
+    out->dst = in->dst;
     return;
 }

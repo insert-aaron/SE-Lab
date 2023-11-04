@@ -31,15 +31,14 @@ extern int64_t W_wval;
  * You will need the global variable W_wval.
  */
 
-comb_logic_t wback_instr(w_instr_impl_t *in)
-{
-    if (in->W_sigs.wval_sel)
-    {
+comb_logic_t wback_instr(w_instr_impl_t *in){
+    if(in->W_sigs.wval_sel){
         W_wval = in->val_mem;
-    }
-    else
-    {
+    }else{
         W_wval = in->val_ex;
     }
+    W_out->dst = in->dst;
+    W_out->W_sigs.w_enable = in->W_sigs.w_enable;
+    W_out->W_sigs.wval_sel = in->W_sigs.wval_sel;
     return;
 }
