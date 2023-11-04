@@ -39,29 +39,20 @@ extern comb_logic_t copy_w_ctl_sigs(w_ctl_sigs_t *, w_ctl_sigs_t *);
 comb_logic_t execute_instr(x_instr_impl_t *in, m_instr_impl_t *out){
     // Copy the memory stage control signals from the input instruction (in) to the output instruction (out)
     copy_m_ctl_sigs(&(out->M_sigs), &(in->M_sigs));
-
     // Copy the write-back stage control signals from the input instruction (in) to the output instruction (out)
     copy_w_ctl_sigs(&(out->W_sigs), &(in->W_sigs));
-
     // Initialize a variable val_B to hold the value for the second operand of the ALU operation
     uint64_t val_B;
-
     // Check if valb_sel is set in control signals or if the opcode is OP_MVN
-    if (in->X_sigs.valb_sel || in->op == OP_MVN)
-    {
+    if (in->X_sigs.valb_sel || in->op == OP_MVN){
         // If true, use the value from register val_b as the second operand
         val_B = in->val_b;
-    }
-    else
-    {
+    }else{
         // Otherwise, use the immediate value (val_imm) as the second operand
         val_B = in->val_imm;
     }
-
-    // Perform the ALU operation based on the input values and control signals
     // Store the result in val_ex and the condition flag in X_condval
     alu(in->val_a, val_B, in->val_hw, in->ALU_op, in->X_sigs.set_CC, in->cond, &(out->val_ex), &(X_condval));
-
     // Copy some fields from the input instruction (in) to the output instruction (out)
     out->print_op = in->print_op;
     out->op = in->op;
@@ -69,16 +60,8 @@ comb_logic_t execute_instr(x_instr_impl_t *in, m_instr_impl_t *out){
     out->seq_succ_PC = in->seq_succ_PC;
     out->dst = in->dst;
     out->status = in->status;
-
-    // Copy the destination register identifier from the input instruction (in) to the output instruction (out)
     out->dst = in->dst;
-
-    // Copy the write-enable control signal from the input instruction (in) to the output instruction (out)
     out->W_sigs.w_enable = in->W_sigs.w_enable;
-
-    // Set the cond_holds field in the output instruction (out) to the value of X_condval
     out->cond_holds = X_condval;
-
-    // Return, indicating that the processing of the instruction is complete
     return;
 }

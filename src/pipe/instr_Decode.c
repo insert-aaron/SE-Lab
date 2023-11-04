@@ -38,14 +38,18 @@ extern int64_t W_wval;
 static comb_logic_t
 generate_DXMW_control(opcode_t op, d_ctl_sigs_t *D_sigs, x_ctl_sigs_t *X_sigs, m_ctl_sigs_t *M_sigs, w_ctl_sigs_t *W_sigs)
 {
-
+    // Determine source of src 2
     D_sigs->src2_sel = op == OP_STUR;
+    //Determine source for valb_sel && sec_CC control signals
     X_sigs->valb_sel = (op >= OP_ADDS_RR && op <= OP_TST_RR && op != OP_SUB_RI && op != OP_MVN);
     X_sigs->set_CC = X_sigs->valb_sel && op != OP_ORR_RR && op != OP_EOR_RR;
+    // Determine if data mem read and write are needed
     M_sigs->dmem_read = op == OP_LDUR;
     M_sigs->dmem_write = op == OP_STUR;
+    //Destination register selection for write-back
     W_sigs->dst_sel = op == OP_BL;
     W_sigs->wval_sel = op == OP_LDUR;
+    // source for wval_sel & write-ack control signals
     W_sigs->w_enable = op == OP_LDUR || 
         (op > OP_STUR && op < OP_CMP_RR) || (op > OP_CMP_RR && op < OP_TST_RR) || (op > OP_TST_RR && op < OP_B) || op == OP_BL;
     return;
@@ -60,6 +64,7 @@ generate_DXMW_control(opcode_t op, d_ctl_sigs_t *D_sigs, x_ctl_sigs_t *X_sigs, m
 static comb_logic_t
 extract_immval(uint32_t insnbits, opcode_t op, int64_t *imm){
     if (op == OP_LDUR || op == OP_STUR){
+        //For load and store instructions, extract a signed 9-bit immeditate val
         *imm = bitfield_s64(insnbits, 12, 9);
     }
     else if (op == OP_MOVK || op == OP_MOVZ){
@@ -70,15 +75,19 @@ extract_immval(uint32_t insnbits, opcode_t op, int64_t *imm){
     }
     else if (op == OP_ADD_RI 
         || op == OP_SUB_RI || op == OP_UBFM || op == OP_ASR){
+        // For add , sub, unsigned, and arithmetic shift right
         *imm = bitfield_u32(insnbits, 10, 12);
     }
     else if (op == OP_LSL){
+        // logical left
         *imm = bitfield_u32(insnbits, 10, 6) % 32 + 1;
     }
     else if (op == OP_LSR){
+        //logical shift right
         *imm = bitfield_u32(insnbits, 10, 6) - bitfield_u32(insnbits, 16, 6) + 1;
     }
     else if (op == OP_B || op == OP_BL){
+        //branck and link instr
         *imm = bitfield_s64(insnbits, 0, 26);
     }
     else{
@@ -256,15 +265,11 @@ comb_logic_t decode_instr(d_instr_impl_t *in, x_instr_impl_t *out)
     out->seq_succ_PC = in->seq_succ_PC;
 
     // If the opcode is OP_B_COND, extract and store the condition code
-
     if (in->op == OP_B_COND){
         out->cond = bitfield_u32(in->insnbits, 0, 4);
     }
-
     // If the opcode is ADRP, set val_a to the sequential successor program counter
-
-    if (in->op == OP_ADRP)
-    {
+    if (in->op == OP_ADRP){
         out->val_a = in->seq_succ_PC;
     }
 

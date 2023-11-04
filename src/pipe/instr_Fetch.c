@@ -151,32 +151,28 @@ static void fix_instr_aliases(uint32_t insnbits, opcode_t *op)
  * select_pc, predict_pc, and imem.
  */
 
-comb_logic_t fetch_instr(f_instr_impl_t *in, d_instr_impl_t *out)
-{
+comb_logic_t fetch_instr(f_instr_impl_t *in, d_instr_impl_t *out){
+    // Dealing with errors
     bool imem_err = 0;
     uint64_t current_PC;
+    //Select next program counter based on conditions and store in curPC
     select_PC(in->pred_PC, X_out->op, X_out->val_a, M_out->op, M_out->cond_holds, M_out->seq_succ_PC, &(current_PC));
-    // select_PC(in->pred_PC, D_out->op, X_in->val_a, M_out->op, M_in->cond_holds, M_out->seq_succ_PC, &current_PC);
     /*
      * Students: This case is for generating HLT instructions
      * to stop the pipeline. Only write your code in the **else** case.
      */
-    if (!current_PC || F_in->status == STAT_HLT)
-    {
+    if (!current_PC || F_in->status == STAT_HLT){
         out->insnbits = 0xD4400000U;
         out->op = OP_HLT;
         out->print_op = OP_HLT;
         imem_err = false;
-    }
-    else
-    {
-        // WRITE HERE!
-        // get the insnbits for the current instruction
+    }else{
+        //Var to hold fetched instruction word
         uint32_t iword;
+        //Fetch instruct word from curPC
         imem(current_PC, &(iword), &(imem_err));
 
-        // decode those bits to get the opcode
-        // extract top 11 bits, send as input to the itable
+        //Determine opcodd from fetched instr, fixing and setting for printing
         out->op = itable[(iword >> 21) & 0x7FF];
         fix_instr_aliases(iword, &(out->op));
         out->print_op = out->op;
@@ -186,21 +182,16 @@ comb_logic_t fetch_instr(f_instr_impl_t *in, d_instr_impl_t *out)
         predict_PC(current_PC, iword, out->op, &(F_PC), &(out->seq_succ_PC));
     }
 
-    // Handle errors and set error codes
-
-    // We do not recommend modifying the below code.
-    if (imem_err || out->op == OP_ERROR)
-    {
+    // Check for instruction memory errors or an OP_ERROR opcode in the output instruction
+    if (imem_err || out->op == OP_ERROR){
         in->status = STAT_INS;
         F_in->status = in->status;
-    }
-    else if (out->op == OP_HLT)
-    {
+    }else if (out->op == OP_HLT){
+        // set status of input & F_in to halt
         in->status = STAT_HLT;
         F_in->status = in->status;
-    }
-    else
-    {
+    }else{
+        //else normal operation
         in->status = STAT_AOK;
     }
     out->status = in->status;

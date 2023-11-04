@@ -35,21 +35,23 @@ extern comb_logic_t copy_w_ctl_sigs(w_ctl_sigs_t *, w_ctl_sigs_t *);
 
 comb_logic_t memory_instr(m_instr_impl_t *in, w_instr_impl_t *out)
 {
-    // Read / Write from data memory (and check for errors)
-    if (in->M_sigs.dmem_read || in->M_sigs.dmem_write)
-    {
-        bool dmem_err = false;
-        dmem(in->val_ex, in->val_b, in->M_sigs.dmem_read, in->M_sigs.dmem_write, &(out->val_mem), &(dmem_err));
-        if (dmem_err)
-        {
+    // Checking data memory read or write
+    if (in->M_sigs.dmem_read || in->M_sigs.dmem_write){
+        // Initialize flag to track potential data memory errors
+        bool x = 0;
+        // Perfrom data memory op , storing in val_mem
+        dmem(in->val_ex, in->val_b, in->M_sigs.dmem_read, in->M_sigs.dmem_write, &(out->val_mem), &(x));
+        // If data memory error, set address error
+        if (x){
             in->status = STAT_ADR;
         }
     }
 
-    // Carry remaining necessary information to Writeback
+    //copy fields from input to output instruction
     out->status = in->status;
     out->op = in->op;
     out->print_op = in->print_op;
+    // copy write-back stage control signals from input to output
     copy_w_ctl_sigs(&(out->W_sigs), &(in->W_sigs));
     out->val_ex = in->val_ex;
     out->dst = in->dst;
