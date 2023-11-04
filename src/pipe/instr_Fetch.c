@@ -83,6 +83,8 @@ predict_PC(uint64_t current_PC, uint32_t insnbits, opcode_t op,
     }
 
     // Modify starting here.
+
+    *seq_succ = current_PC + 4;
     switch (op)
     {
     case OP_B:
