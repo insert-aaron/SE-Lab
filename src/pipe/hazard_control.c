@@ -68,8 +68,7 @@ void pipe_control_stage(proc_stage_t stage, bool bubble, bool stall)
 
 bool check_ret_hazard(opcode_t D_opcode)
 {
-    /* Students: Implement Below */
-    if (D_opcode = OP_RET)
+    if (D_opcode == OP_RET)
     {
         return true;
     }
@@ -78,7 +77,6 @@ bool check_ret_hazard(opcode_t D_opcode)
 
 bool check_mispred_branch_hazard(opcode_t X_opcode, bool X_condval)
 {
-    /* Students: Implement Below */
     if (X_opcode == OP_B_COND && !X_condval)
     {
         return true;
@@ -89,7 +87,6 @@ bool check_mispred_branch_hazard(opcode_t X_opcode, bool X_condval)
 bool check_load_use_hazard(opcode_t D_opcode, uint8_t D_src1, uint8_t D_src2,
                            opcode_t X_opcode, uint8_t X_dst)
 {
-    /* Students: Implement Below */
     if (X_opcode == OP_LDUR && (D_src1 == X_dst || D_src2 == X_dst))
     {
         return true;
@@ -100,51 +97,77 @@ bool check_load_use_hazard(opcode_t D_opcode, uint8_t D_src1, uint8_t D_src2,
 comb_logic_t handle_hazards(opcode_t D_opcode, uint8_t D_src1, uint8_t D_src2,
                             opcode_t X_opcode, uint8_t X_dst, bool X_condval)
 {
-    /* Students: Change the below code IN WEEK TWO -- do not touch for week one */
-    // Initial stall check for the Fetch stage
     bool f_stall = F_out->status == STAT_HLT || F_out->status == STAT_INS;
-    bool d_stall = false;
-    bool x_stall = false;
-    bool m_stall = false;
-    bool w_stall = false;
+    pipe_control_stage(S_FETCH, false, f_stall);
+    pipe_control_stage(S_DECODE, false, false);
+    pipe_control_stage(S_EXECUTE, false, false);
+    pipe_control_stage(S_MEMORY, false, false);
+    pipe_control_stage(S_WBACK, false, false);
 
-    // Check for a return hazard which might require stalling the fetch stage
-    if (check_ret_hazard(D_opcode))
+    if (W_out->status != STAT_AOK && W_out->status != STAT_BUB)
+    { // w out: f, d, x, w
+        pipe_control_stage(S_FETCH, false, true);
+        pipe_control_stage(S_DECODE, false, true);
+        pipe_control_stage(S_EXECUTE, false, true);
+        pipe_control_stage(S_MEMORY, false, true);
+        pipe_control_stage(S_WBACK, false, true);
+    }
+    if (M_out->status != STAT_AOK && M_out->status != STAT_BUB)
+    { // m out: f, d, x, m; same as W->in
+        X_in->X_sigs.set_CC = false;
+        pipe_control_stage(S_FETCH, false, true);
+        pipe_control_stage(S_DECODE, false, true);
+        pipe_control_stage(S_EXECUTE, false, true);
+        pipe_control_stage(S_MEMORY, false, true);
+    }
+    if (X_out->status != STAT_AOK && X_out->status != STAT_BUB)
+    { // x out: f, d, x
+        pipe_control_stage(S_FETCH, false, true);
+        pipe_control_stage(S_DECODE, false, true);
+        pipe_control_stage(S_EXECUTE, false, true);
+    }
+    if (D_out->status != STAT_AOK && D_out->status != STAT_BUB)
     {
-        // If a return instruction is in the Decode stage, we need to stall Fetch until it's resolved.
-        f_stall = true;
+        X_in->W_sigs.w_enable = false;
+        pipe_control_stage(S_FETCH, false, true);
+        pipe_control_stage(S_DECODE, false, true);
+    }
+    if (F_out->status != STAT_AOK && F_out->status != STAT_BUB)
+    {
+        pipe_control_stage(S_FETCH, false, true);
     }
 
-    // Check for a mispredicted branch hazard which might require flushing the pipeline
-    if (check_mispred_branch_hazard(X_opcode, X_condval))
+    if (dmem_status == IN_FLIGHT)
     {
-        // If a branch was mispredicted, we need to flush the pipeline from Execute backwards.
-        f_stall = true;
-        d_stall = true;
-        x_stall = true; // Actually, this could be a flush, depending on the pipeline implementation.
-        // Flushing could involve setting specific control flags or resetting the pipeline registers.
+        pipe_control_stage(S_FETCH, false, true);
+        pipe_control_stage(S_DECODE, false, true);
+        pipe_control_stage(S_EXECUTE, false, true);
+        pipe_control_stage(S_MEMORY, false, true);
+        pipe_control_stage(S_WBACK, true, false);
     }
 
-    // Check for a load-use hazard which might require stalling the decode stage
     if (check_load_use_hazard(D_opcode, D_src1, D_src2, X_opcode, X_dst))
     {
-        // If a load-use hazard is detected, Decode must stall until the load completes in Execute.
-        d_stall = true;
+        pipe_control_stage(S_FETCH, false, true);
+        pipe_control_stage(S_DECODE, false, true);
+        pipe_control_stage(S_EXECUTE, true, false);
+        pipe_control_stage(S_MEMORY, false, false);
+        pipe_control_stage(S_WBACK, false, false);
     }
-
-    // Based on the stall flags set above, control the pipeline stages accordingly
-    pipe_control_stage(S_FETCH, false, f_stall);
-    pipe_control_stage(S_DECODE, false, d_stall);
-    pipe_control_stage(S_EXECUTE, false, x_stall);
-    pipe_control_stage(S_MEMORY, false, m_stall);
-    pipe_control_stage(S_WBACK, false, w_stall);
-
-    // Construct the return value with the updated control flags.
-    comb_logic_t result = {
-        .f_stall = f_stall,
-        .d_stall = d_stall,
-        .x_stall = x_stall,
-        .m_stall = m_stall,
-        .w_stall = w_stall};
-    return result;
+    else if (check_mispred_branch_hazard(X_opcode, X_condval))
+    {
+        pipe_control_stage(S_FETCH, false, false);
+        pipe_control_stage(S_DECODE, true, false);
+        pipe_control_stage(S_EXECUTE, true, false);
+        pipe_control_stage(S_MEMORY, false, false);
+        pipe_control_stage(S_WBACK, false, false);
+    }
+    else if (check_ret_hazard(D_opcode))
+    {
+        pipe_control_stage(S_FETCH, false, false);
+        pipe_control_stage(S_DECODE, true, false);
+        pipe_control_stage(S_EXECUTE, false, false);
+        pipe_control_stage(S_MEMORY, false, false);
+        pipe_control_stage(S_WBACK, false, false);
+    }
 }
