@@ -97,77 +97,49 @@ bool check_load_use_hazard(opcode_t D_opcode, uint8_t D_src1, uint8_t D_src2,
 comb_logic_t handle_hazards(opcode_t D_opcode, uint8_t D_src1, uint8_t D_src2,
                             opcode_t X_opcode, uint8_t X_dst, bool X_condval)
 {
-    bool f_stall = F_out->status == STAT_HLT || F_out->status == STAT_INS;
-    pipe_control_stage(S_FETCH, false, f_stall);
-    pipe_control_stage(S_DECODE, false, false);
-    pipe_control_stage(S_EXECUTE, false, false);
-    pipe_control_stage(S_MEMORY, false, false);
-    pipe_control_stage(S_WBACK, false, false);
 
-    if (W_out->status != STAT_AOK && W_out->status != STAT_BUB)
-    { // w out: f, d, x, w
-        pipe_control_stage(S_FETCH, false, true);
-        pipe_control_stage(S_DECODE, false, true);
-        pipe_control_stage(S_EXECUTE, false, true);
-        pipe_control_stage(S_MEMORY, false, true);
-        pipe_control_stage(S_WBACK, false, true);
-    }
-    if (M_out->status != STAT_AOK && M_out->status != STAT_BUB)
-    { // m out: f, d, x, m; same as W->in
-        X_in->X_sigs.set_CC = false;
-        pipe_control_stage(S_FETCH, false, true);
-        pipe_control_stage(S_DECODE, false, true);
-        pipe_control_stage(S_EXECUTE, false, true);
-        pipe_control_stage(S_MEMORY, false, true);
-    }
-    if (X_out->status != STAT_AOK && X_out->status != STAT_BUB)
-    { // x out: f, d, x
-        pipe_control_stage(S_FETCH, false, true);
-        pipe_control_stage(S_DECODE, false, true);
-        pipe_control_stage(S_EXECUTE, false, true);
-    }
-    if (D_out->status != STAT_AOK && D_out->status != STAT_BUB)
+    // Initialize stall and bubble flags for all stages
+    bool f_stall = false, d_stall = false, d_bubble = false,
+            x_bubble = false, m_bubble = false, w_bubble = false;
+
+
+    f_stall = F_out->status == STAT_HLT || F_out->status == STAT_INS;
+
+    // Detect control hazards
+    // If the execute stage contains a branch instruction and the condition is validated (branch taken)
+    if (is_branch(X_opcode) && X_condval)
     {
-        X_in->W_sigs.w_enable = false;
-        pipe_control_stage(S_FETCH, false, true);
-        pipe_control_stage(S_DECODE, false, true);
-    }
-    if (F_out->status != STAT_AOK && F_out->status != STAT_BUB)
-    {
-        pipe_control_stage(S_FETCH, false, true);
+        // Bubble the execute stage and potentially the subsequent stages
+        d_bubble = true;
+        x_bubble = true;  // Must bubble the execute stage if branch is taken
+        m_bubble = false; // Can optionally bubble the memory stage
+        w_bubble = false; // Can optionally bubble the write-back stage
     }
 
-    if (dmem_status == IN_FLIGHT)
+    // Detect data hazards
+    // If the execute stage's destination register is one of the decode stage's source registers
+    if (X_dst != R_NONE && (X_dst == D_src1 || X_dst == D_src2))
     {
-        pipe_control_stage(S_FETCH, false, true);
-        pipe_control_stage(S_DECODE, false, true);
-        pipe_control_stage(S_EXECUTE, false, true);
-        pipe_control_stage(S_MEMORY, false, true);
-        pipe_control_stage(S_WBACK, true, false);
+        // Stall fetch and decode stages until the data is ready (RAW hazard)
+        f_stall = true;
+        d_stall = true;
     }
 
-    if (check_load_use_hazard(D_opcode, D_src1, D_src2, X_opcode, X_dst))
-    {
-        pipe_control_stage(S_FETCH, false, true);
-        pipe_control_stage(S_DECODE, false, true);
-        pipe_control_stage(S_EXECUTE, true, false);
-        pipe_control_stage(S_MEMORY, false, false);
-        pipe_control_stage(S_WBACK, false, false);
-    }
-    else if (check_mispred_branch_hazard(X_opcode, X_condval))
-    {
-        pipe_control_stage(S_FETCH, false, false);
-        pipe_control_stage(S_DECODE, true, false);
-        pipe_control_stage(S_EXECUTE, true, false);
-        pipe_control_stage(S_MEMORY, false, false);
-        pipe_control_stage(S_WBACK, false, false);
-    }
-    else if (check_ret_hazard(D_opcode))
-    {
-        pipe_control_stage(S_FETCH, false, false);
-        pipe_control_stage(S_DECODE, true, false);
-        pipe_control_stage(S_EXECUTE, false, false);
-        pipe_control_stage(S_MEMORY, false, false);
-        pipe_control_stage(S_WBACK, false, false);
-    }
+    pipe_control_stage(S_FETCH, d_bubble, f_stall);
+    pipe_control_stage(S_DECODE, x_bubble, d_stall);
+    pipe_control_stage(S_EXECUTE, m_bubble, x_bubble);
+    pipe_control_stage(S_MEMORY, w_bubble, m_bubble);
+    pipe_control_stage(S_WBACK, false, w_bubble);
+
+    // Create and return the comb_logic_t struct with updated control flags
+    comb_logic_t control_logic = {
+        .f_stall = f_stall,
+        .d_stall = d_stall,
+        .d_bubble = d_bubble,
+        .x_bubble = x_bubble,
+        .m_bubble = m_bubble,
+        .w_bubble = w_bubble};
+
+    return control_logic;
+
 }
