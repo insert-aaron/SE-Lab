@@ -49,17 +49,28 @@ void pipe_control_stage(proc_stage_t stage, bool bubble, bool stall) {
 
 bool check_ret_hazard(opcode_t D_opcode) {
     /* Students: Implement Below */
+    if(D_opcode = OP_RET){
+        return true;
+    }
     return false;
 }
 
 bool check_mispred_branch_hazard(opcode_t X_opcode, bool X_condval) {
     /* Students: Implement Below */
+    if(X_opcode == OP_B_COND && !X_condval){
+        return true;
+    }
     return false;
 }
 
 bool check_load_use_hazard(opcode_t D_opcode, uint8_t D_src1, uint8_t D_src2,
                            opcode_t X_opcode, uint8_t X_dst) {
     /* Students: Implement Below */
+    if (X_opcode == OP_LDUR && (D_src1 == X_dst || D_src2 == X_dst)) {
+        return true;
+    }
+    return false;
+
     return false;
 }
 
@@ -72,6 +83,73 @@ comb_logic_t handle_hazards(opcode_t D_opcode, uint8_t D_src1, uint8_t D_src2,
     pipe_control_stage(S_EXECUTE, false, false);
     pipe_control_stage(S_MEMORY, false, false);
     pipe_control_stage(S_WBACK, false, false);
+
+    if (W_out->status != STAT_AOK && W_out->status != STAT_BUB)
+    { // w out: f, d, x, w
+        pipe_control_stage(S_FETCH, false, true);
+        pipe_control_stage(S_DECODE, false, true);
+        pipe_control_stage(S_EXECUTE, false, true);
+        pipe_control_stage(S_MEMORY, false, true);
+        pipe_control_stage(S_WBACK, false, true);
+    }
+    if (M_out->status != STAT_AOK && M_out->status != STAT_BUB)
+    { // m out: f, d, x, m; same as W->in
+        X_in->X_sigs.set_CC = false;
+        pipe_control_stage(S_FETCH, false, true);
+        pipe_control_stage(S_DECODE, false, true);
+        pipe_control_stage(S_EXECUTE, false, true);
+        pipe_control_stage(S_MEMORY, false, true);
+    }
+    if (X_out->status != STAT_AOK && X_out->status != STAT_BUB)
+    { // x out: f, d, x
+        pipe_control_stage(S_FETCH, false, true);
+        pipe_control_stage(S_DECODE, false, true);
+        pipe_control_stage(S_EXECUTE, false, true);
+    }
+    if (D_out->status != STAT_AOK && D_out->status != STAT_BUB)
+    {
+        X_in->W_sigs.w_enable = false;
+        pipe_control_stage(S_FETCH, false, true);
+        pipe_control_stage(S_DECODE, false, true);
+    }
+    if (F_out->status != STAT_AOK && F_out->status != STAT_BUB)
+    {
+        pipe_control_stage(S_FETCH, false, true);
+    }
+
+    if (dmem_status == IN_FLIGHT)
+    {
+        pipe_control_stage(S_FETCH, false, true);
+        pipe_control_stage(S_DECODE, false, true);
+        pipe_control_stage(S_EXECUTE, false, true);
+        pipe_control_stage(S_MEMORY, false, true);
+        pipe_control_stage(S_WBACK, true, false);
+    }
+
+    if (check_load_use_hazard(D_opcode, D_src1, D_src2, X_opcode, X_dst))
+    {
+        pipe_control_stage(S_FETCH, false, true);
+        pipe_control_stage(S_DECODE, false, true);
+        pipe_control_stage(S_EXECUTE, true, false);
+        pipe_control_stage(S_MEMORY, false, false);
+        pipe_control_stage(S_WBACK, false, false);
+    }
+    else if (check_mispred_branch_hazard(X_opcode, X_condval))
+    {
+        pipe_control_stage(S_FETCH, false, false);
+        pipe_control_stage(S_DECODE, true, false);
+        pipe_control_stage(S_EXECUTE, true, false);
+        pipe_control_stage(S_MEMORY, false, false);
+        pipe_control_stage(S_WBACK, false, false);
+    }
+    else if (check_ret_hazard(D_opcode))
+    {
+        pipe_control_stage(S_FETCH, false, false);
+        pipe_control_stage(S_DECODE, true, false);
+        pipe_control_stage(S_EXECUTE, false, false);
+        pipe_control_stage(S_MEMORY, false, false);
+        pipe_control_stage(S_WBACK, false, false);
+    }
 }
 
 
