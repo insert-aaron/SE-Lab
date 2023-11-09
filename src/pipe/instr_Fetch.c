@@ -141,7 +141,7 @@ comb_logic_t fetch_instr(f_instr_impl_t *in, d_instr_impl_t *out)
     else
     {
         // Fetching instructions from memory using curPC
-        imem_err = imem(current_PC, &(out->insnbits));
+        imem(current_PC, &(iword), &(imem_err));
 
         // Use the predict PC function to predict the next PC
         predict_PC(current_PC, out->insnbits, out->op, &predicted_PC & seq_succ);
