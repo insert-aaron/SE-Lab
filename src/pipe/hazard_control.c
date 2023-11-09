@@ -97,7 +97,6 @@ bool check_load_use_hazard(opcode_t D_opcode, uint8_t D_src1, uint8_t D_src2,
 comb_logic_t handle_hazards(opcode_t D_opcode, uint8_t D_src1, uint8_t D_src2,
                             opcode_t X_opcode, uint8_t X_dst, bool X_condval){
 
-    comb_logic_t logic = {0};
     bool f_stall = F_out->status == STAT_HLT || F_out->status == STAT_INS;
     pipe_control_stage(S_FETCH, false, f_stall);
     pipe_control_stage(S_DECODE, false, false);
