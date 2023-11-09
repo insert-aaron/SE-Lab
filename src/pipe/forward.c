@@ -8,7 +8,7 @@
 #include "forward.h"
 #include "machine.h"
 
-extern machine_t client;
+extern machine_t guest;
 
 /* STUDENT TO-DO:
  * Implement forwarding register values from
@@ -19,12 +19,12 @@ comb_logic_t forward_reg(uint8_t D_src1, uint8_t D_src2, uint8_t X_dst, uint8_t 
             uint64_t W_val_mem, bool M_wval_sel, bool W_wval_sel, bool X_w_enable,
                 bool M_w_enable, bool W_w_enable,
                     uint64_t *val_a, uint64_t *val_b){
-    if(client.proc->w_insn->in.w->W_sigs.w_enable){
+    if(guest.proc->w_insn->in.w->W_sigs.w_enable){
         if(D_src1 == W_dst){
 
             if(W_wval_sel){
-                if(client.proc->w_insn->in.w->W_sigs.dst_sel){
-                    *val_a = client.proc->d_insn->in.d->seq_succ_PC;
+                if(guest.proc->w_insn->in.w->W_sigs.dst_sel){
+                    *val_a = guest.proc->d_insn->in.d->seq_succ_PC;
                 }else{
                     *val_a = W_val_ex;
                 }
@@ -43,7 +43,7 @@ comb_logic_t forward_reg(uint8_t D_src1, uint8_t D_src2, uint8_t X_dst, uint8_t 
     }
 
     //Checks Memory 
-    if(client.proc->m_insn->in.w->W_sigs.w_enable){
+    if(guest.proc->m_insn->in.w->W_sigs.w_enable){
         if(D_src1 == M_dst){
 
             if(M_wval_sel){
@@ -63,8 +63,8 @@ comb_logic_t forward_reg(uint8_t D_src1, uint8_t D_src2, uint8_t X_dst, uint8_t 
     }
 
     //Checks execute
-    if(client.proc->x_insn->in.w->W_sigs.w_enable 
-        && !(client.proc->x_insn->in.m->M_sigs.dmem_read)){
+    if(guest.proc->x_insn->in.w->W_sigs.w_enable 
+        && !(guest.proc->x_insn->in.m->M_sigs.dmem_read)){
         
         if(D_src1 == X_dst){
             *val_a = X_val_ex;
