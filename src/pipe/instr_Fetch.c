@@ -141,18 +141,17 @@ comb_logic_t fetch_instr(f_instr_impl_t *in, d_instr_impl_t *out)
     else
     {
         // Fetching instructions from memory using curPC
+        uint32_t iword;
         imem(current_PC, &(iword), &(imem_err));
 
-        // Use the predict PC function to predict the next PC
-        predict_PC(current_PC, out->insnbits, out->op, &predicted_PC & seq_succ);
-
-        // Update F_PC for the next cycle's predicted PC
-        F_PC = predicted_PC;
-
-        // Decoding fetched instructions, assuming function decode to
-        // to get opcode from insbits
-        out->op = decode(out->insnbits);
+        // Determine opcodd from fetched instr, fixing and setting for printing
+        out->op = itable[(iword >> 21) & 0x7FF];
+        fix_instr_aliases(iword, &(out->op));
         out->print_op = out->op;
+        out->insnbits = iword;
+
+        // call the various fetch helper functions as appropriate
+        predict_PC(current_PC, iword, out->op, &(F_PC), &(out->seq_succ_PC));
     }
 
     // We do not recommend modifying the below code.
