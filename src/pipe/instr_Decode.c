@@ -40,89 +40,20 @@ generate_DXMW_control(opcode_t op,
                       d_ctl_sigs_t *D_sigs, x_ctl_sigs_t *X_sigs, m_ctl_sigs_t *M_sigs, w_ctl_sigs_t *W_sigs)
 {
 
-    switch (op)
-    {
-    case OP_STUR:
-        D_sigs->src2_sel = 1;   // Set source selection signal
-        W_sigs->dmem_write = 1; // Data memory write
-        W_sigs->w_enable = 0;   // Disable write
-        break;
-
-    // Handle multiple opcodes that share similar signal settings
-    case OP_ADDS_RR:
-    case OP_ANDS_RR:
-    case OP_SUBS_RR:
-    case OP_CMP_RR:
-    case OP_TST_RR:
-        X_sigs->valb_sel = 1; // Set the value B selection signal
-        X_sigs->set_CC = 1;   // Set condition code
-        // Specific handling for OP_CMP_RR and OP_TST_RR
-        if (op == OP_CMP_RR || op == OP_TST_RR)
-        {
-            W_sigs->w_enable = 0; // Disable write enable for these ops
-        }
-        else
-        {
-            W_sigs->w_enable = 1; // Enable write for other ops in this group
-        }
-        break;
-
-    // Handle other opcodes that have the same value B selection signal
-    case OP_ORR_RR:
-    case OP_EOR_RR:
-    case OP_MVN:
-        X_sigs->valb_sel = 1; // Set the value B selection signal
-        W_sigs->w_enable = 1; // Enable write
-        break;
-
-    // Check if the opcode matches OP_LDUR
-    case OP_LDUR:
-        M_sigs->dmem_read = 1; // Enable data memory read
-        W_sigs->wval_sel = 1;  // Set the write value selection signal
-        W_sigs->w_enable = 1;  // Enable write
-        break;
-
-    // Check if the opcode matches OP_BL
-    case OP_BL:
-        W_sigs->dst_sel = 1;  // Set the destination selection signal
-        W_sigs->w_enable = 1; // Enable write
-        break;
-
-    // Handle multiple opcodes that share the same write disable setting
-    case OP_B:
-    case OP_B_COND:
-    case OP_RET:
-    case OP_NOP:
-    case OP_HLT:
-        W_sigs->w_enable = 0; // Disable write for these ops
-        break;
-
-    // Check if the opcode matches OP_ERROR
-    case OP_ERROR:
-        W_sigs->w_enable = 0; // Disable write for error opcode
-        break;
-
-    // For any other unhandled opcodes
-    default:
-        W_sigs->w_enable = 1; // Default to enable write
-        break;
-    }
-
-    // Set default values for signals not handled by switch cases
-    if (!D_sigs->src2_sel)
-        D_sigs->src2_sel = 0; // Default source selection signal
-    if (!X_sigs->valb_sel)
-        X_sigs->valb_sel = 0; // Default value B selection signal
-    if (!X_sigs->set_CC)
-        X_sigs->set_CC = 0; // Default condition code signal
-    if (!M_sigs->dmem_read)
-        M_sigs->dmem_read = 0; // Default data memory read signal
-    if (!M_sigs->dmem_write)
-        M_sigs->dmem_write = 0; // Default data memory write signal
-    if (!W_sigs->dst_sel)
-        W_sigs->dst_sel = 0; // Default destination selection signal
-    if (!W_sigs->wval_sel)
-        W_sigs->wval_sel = 0; // Default write value selection signal
+    // Determine source of src 2
+    D_sigs->src2_sel = op == OP_STUR;
+    // Determine source for valb_sel && sec_CC control signals
+    X_sigs->valb_sel = (op >= OP_ADDS_RR && op <= OP_TST_RR && op != OP_SUB_RI && op != OP_MVN);
+    X_sigs->set_CC = X_sigs->valb_sel && op != OP_ORR_RR && op != OP_EOR_RR;
+    // Determine if data mem read and write are needed
+    M_sigs->dmem_read = op == OP_LDUR;
+    M_sigs->dmem_write = op == OP_STUR;
+    // Destination register selection for write-back
+    W_sigs->dst_sel = op == OP_BL;
+    W_sigs->wval_sel = op == OP_LDUR;
+    // source for wval_sel & write-ack control signals
+    W_sigs->w_enable = op == OP_LDUR ||
+                       (op > OP_STUR && op < OP_CMP_RR) || (op > OP_CMP_RR && op < OP_TST_RR) || (op > OP_TST_RR && op < OP_B) || op == OP_BL;
 
     return;
 }
@@ -283,21 +214,6 @@ extract_regs(uint32_t insnbits, opcode_t op,
     set_src_dst_values(src1, src2, dst, insnbits);
     set_src1_dst_values(src1, src2, dst, insnbits);
     process_operations() return;
-}
-
-// Set the values of parameters, adjusting for a value of 31
-void set_src_dst_values(uint8_t *src1, uint8_t *src2, uint8_t *dst, uint32_t value)
-{
-    *src1 = (value == 31) ? 32 : value;
-    *src2 = (value == 31) ? 32 : value;
-    *dst = (value == 31) ? 32 : value;
-}
-
-// Set the values of parameters, adjusting for a value of 31
-void set_src1_dst_values(uint8_t *src1, uint8_t *dst, uint32_t value)
-{
-    *src1 = (value == 31) ? 32 : value;
-    *dst = (value == 31) ? 32 : value;
 }
 
 // Processing different operation types and adjust parameters
