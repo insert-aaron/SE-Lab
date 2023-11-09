@@ -45,7 +45,7 @@ select_PC(uint64_t pred_PC,                                      // The predicte
     }
 
     // Checking conditional branch instruction in memory stage
-    if (M_opcode == B_COND && M_cond_val)
+    if (M_opcode == OP_B_COND && M_cond_val)
     {
         *current_PC = seq_succ; // True, set next PC to seq_succ
         return;
@@ -81,7 +81,7 @@ predict_PC(uint64_t current_PC, uint32_t insnbits, opcode_t op,
     *seq_succ = current_PC + 4;
 
     // For conditional branch, predict it as taken.
-    if (op == B_COND)
+    if (op == OP_B_COND)
     {
         // Assuming offset for branch is stored in lower bitsof insnbits.
         long offset = (insnbits & 0xFFFF) << 2;
@@ -125,7 +125,8 @@ comb_logic_t fetch_instr(f_instr_impl_t *in, d_instr_impl_t *out)
 {
     bool imem_err = 0;
     uint64_t current_PC;
-    select_PC(/*Fill the rest of these in.*/, &current_PC);
+    select_PC(in->pred_PC, X_out->op, X_out->val_a, M_out->op, M_out->cond_holds, M_out->seq_succ_PC, &(current_PC));
+
     /*
      * Students: This case is for generating HLT instructions
      * to stop the pipeline. Only write your code in the **else** case.
