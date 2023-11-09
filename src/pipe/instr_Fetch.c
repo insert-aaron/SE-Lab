@@ -4,6 +4,8 @@
  * instr_Fetch.c - Fetch stage of instruction processing pipeline.
  **************************************************************************/
 
+/* Code constructed by Aaron Alvarez (aa88379) and Ryan Passaro(rjp2827)*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -38,6 +40,13 @@ select_PC(uint64_t pred_PC,                                      // The predicte
      * at the top of this function.
      * You may modify below it.
      */
+    if (D_opcode == OP_RET && val_a == RET_FROM_MAIN_ADDR)
+    {
+        *current_PC = 0; // PC can't be 0 normally.
+        return;
+    }
+
+    // Modify starting here.
     if (D_opcode == OP_RET && val_a == RET_FROM_MAIN_ADDR)
     {
         *current_PC = 0; // PC can't be 0 normally.
@@ -78,43 +87,29 @@ predict_PC(uint64_t current_PC, uint32_t insnbits, opcode_t op,
     {
         return; // We use this to generate a halt instruction.
     }
-    if (op == OP_B || op == OP_BL)
-    { // unconditional branch
-        uint64_t boffset = bitfield_s64(insnbits, 0, 26) * 4;
-        if (boffset < 0)
-        {
-            *predicted_PC = current_PC - (-boffset);
-        }
-        else
-        {
-            *predicted_PC = current_PC + boffset;
-        }
-    }
-    else if (op == OP_B_COND)
+
+    // Modify starting here.
+
+    *seq_succ = current_PC + 4;
+    switch (op)
     {
-        uint64_t boffset = bitfield_s64(insnbits, 5, 19) * 4;
-        if (boffset < 0)
-        {
-            *predicted_PC = current_PC - (-boffset);
-        }
-        else
-        {
-            *predicted_PC = current_PC + boffset;
-        }
-    }
-    else
-    {
+    case OP_B:
+    case OP_BL:
+        // extract the imm26 for B1
+        *predicted_PC = current_PC + bitfield_s64(insnbits, 0, 26) * 4;
+        break;
+    case OP_B_COND:
+        *predicted_PC = current_PC + bitfield_s64(insnbits, 5, 19) * 4;
+        break;
+    case OP_ADRP:
         *predicted_PC = current_PC + 4;
+        *seq_succ = *predicted_PC & 0xFFFFF000;
+        break;
+    default:
+        *predicted_PC = *seq_succ;
+        break;
     }
 
-    if (op == OP_ADRP)
-    {
-        *seq_succ = (current_PC >> 12) << 12;
-    }
-    else
-    {
-        *seq_succ = current_PC + 4;
-    }
     return;
 }
 
@@ -127,35 +122,19 @@ predict_PC(uint64_t current_PC, uint32_t insnbits, opcode_t op,
 
 static void fix_instr_aliases(uint32_t insnbits, opcode_t *op)
 {
-    if (*op == OP_UBFM)
+    switch (*op)
     {
-        // check of lsl or lsr
-        uint32_t immshift = bitfield_u32(insnbits, 10, 6); // instruction value
-        if (immshift == 63)
-        { // 0x3f
-            // all bits = 1
-            *op = OP_LSR;
-        }
-        else
-        {
-            *op = OP_LSL;
-        }
-    }
-    else if (*op == OP_SUBS_RR)
-    {
-        uint32_t immdest = bitfield_u32(insnbits, 0, 5); // instruction value
-        if (immdest == 31)
-        { // 0x1f
-            *op = OP_CMP_RR;
-        }
-    }
-    else if (*op == OP_ANDS_RR)
-    {
-        uint32_t immdest = bitfield_u32(insnbits, 0, 5);
-        if (immdest == 31)
-        {
-            *op = OP_TST_RR;
-        }
+    case OP_UBFM:
+        *op = ((insnbits >> 10) & 0x3F) == 0x3F ? OP_LSR : OP_LSL;
+        break;
+    case OP_SUBS_RR:
+        *op = (insnbits & 0x1F) == 0x1F ? OP_CMP_RR : OP_SUBS_RR;
+        break;
+    case OP_ANDS_RR:
+        *op = (insnbits & 0x1F) == 0x1F ? OP_TST_RR : OP_ANDS_RR;
+        break;
+    default:
+        break;
     }
     return;
 }
@@ -176,15 +155,11 @@ static void fix_instr_aliases(uint32_t insnbits, opcode_t *op)
 
 comb_logic_t fetch_instr(f_instr_impl_t *in, d_instr_impl_t *out)
 {
+    // Dealing with errors
     bool imem_err = 0;
     uint64_t current_PC;
-    uint64_t pred_PC = in->pred_PC;         // Assuming F_PC is the predicted PC from the previous cycle.
-    opcode_t D_opcode = X_out->op;          // Opcode from the Decode pipeline register.
-    uint64_t val_a = X_out->val_a;          // A value used for RET correction from the Decode pipeline register.
-    opcode_t M_opcode = M_out->op;          // Opcode from the Memory pipeline register.
-    bool M_cond_val = M_out->cond_holds;    // The condition flag from the Memory pipeline register.
-    uint64_t seq_succ = M_out->seq_succ_PC; // Assuming this is passed down from Decode stage.
-    select_PC(pred_PC, D_opcode, val_a, M_opcode, M_cond_val, seq_succ, &current_PC);
+    // Select next program counter based on conditions and store in curPC
+    select_PC(in->pred_PC, X_out->op, X_out->val_a, M_out->op, M_out->cond_holds, M_out->seq_succ_PC, &(current_PC));
     /*
      * Students: This case is for generating HLT instructions
      * to stop the pipeline. Only write your code in the **else** case.
@@ -198,35 +173,22 @@ comb_logic_t fetch_instr(f_instr_impl_t *in, d_instr_impl_t *out)
     }
     else
     {
-        // write instruction bits
-        imem(current_PC, &(out->insnbits), &imem_err);
-        if (imem_err)
-        { // if out of range or not a multiple of 4
-            in->status = STAT_INS;
-            out->status = STAT_INS;
-            out->op = OP_NOP;
-            out->print_op = OP_NOP;
-        }
-        else
-        {
-            uint32_t opcodeaddr = bitfield_u32(out->insnbits, 21, 11); // extract ins bits
-            out->op = itable[opcodeaddr];                              // get opcode from table
-            // error checks
-            if (out->op == OP_ERROR)
-            {
-                in->status = STAT_INS;
-                out->status = STAT_INS;
-            }
+        // Var to hold fetched instruction word
+        uint32_t iword;
+        // Fetch instruct word from curPC
+        imem(current_PC, &(iword), &(imem_err));
 
-            // call predict PC
-            predict_PC(current_PC, out->insnbits, out->op, &(F_PC), &(out->seq_succ_PC));
-            out->print_op = out->op;                          // set print op
-            fix_instr_aliases(out->insnbits, &out->op);       // fix aliases
-            fix_instr_aliases(out->insnbits, &out->print_op); // fix aliases
-        }
+        // Determine opcodd from fetched instr, fixing and setting for printing
+        out->op = itable[(iword >> 21) & 0x7FF];
+        fix_instr_aliases(iword, &(out->op));
+        out->print_op = out->op;
+        out->insnbits = iword;
+
+        // call the various fetch helper functions as appropriate
+        predict_PC(current_PC, iword, out->op, &(F_PC), &(out->seq_succ_PC));
     }
 
-    // We do not recommend modifying the below code.
+    // Check for instruction memory errors or an OP_ERROR opcode in the output instruction
     if (imem_err || out->op == OP_ERROR)
     {
         in->status = STAT_INS;
@@ -234,11 +196,13 @@ comb_logic_t fetch_instr(f_instr_impl_t *in, d_instr_impl_t *out)
     }
     else if (out->op == OP_HLT)
     {
+        // set status of input & F_in to halt
         in->status = STAT_HLT;
         F_in->status = in->status;
     }
     else
     {
+        // else normal operation
         in->status = STAT_AOK;
     }
     out->status = in->status;

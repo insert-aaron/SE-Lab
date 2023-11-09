@@ -4,6 +4,8 @@
  * instr_Writeback.c - Writeback stage of instruction processing pipeline.
  **************************************************************************/
 
+/* Code constructed by Aaron Alvarez (aa88379) and Ryan Passaro(rjp2827)*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -41,5 +43,8 @@ comb_logic_t wback_instr(w_instr_impl_t *in)
     {
         W_wval = in->val_ex;
     }
+    W_out->dst = in->dst;
+    W_out->W_sigs.w_enable = in->W_sigs.w_enable;
+    W_out->W_sigs.wval_sel = in->W_sigs.wval_sel;
     return;
 }
