@@ -53,5 +53,4 @@ comb_logic_t memory_instr(m_instr_impl_t *in, w_instr_impl_t *out)
     {
         out->status = STAT_ADR;
     }
-    return;
 }
