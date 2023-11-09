@@ -44,7 +44,6 @@ comb_logic_t execute_instr(x_instr_impl_t *in, m_instr_impl_t *out)
     copy_m_ctl_sigs(&(out->M_sigs), &(in->M_sigs));
     copy_w_ctl_sigs(&(out->W_sigs), &(in->W_sigs));
     out->op = in->op;
-
     out->val_b = in->val_b;
 
     uint64_t v = in->X_sigs.valb_sel ? in->val_b : in->val_imm;
