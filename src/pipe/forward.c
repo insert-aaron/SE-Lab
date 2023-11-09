@@ -54,7 +54,7 @@ comb_logic_t forward_reg(uint8_t D_src1, uint8_t D_src2, uint8_t X_dst, uint8_t 
         }
 
         if(D_src2 == M_dst){
-            if(M-W_wval_sel){
+            if(M_wval_sel){
                 *val_b = M_val_ex;
             }else{
                 *val_b = M_val_mem;
