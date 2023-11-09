@@ -131,35 +131,6 @@ comb_logic_t handle_hazards(opcode_t D_opcode, uint8_t D_src1, uint8_t D_src2,
         pipe_control_stage(S_WBACK, false, true);
     }
 
-    // Check for data hazards and stall if necessary
-    bool stall = false;
-
-    if ((D_src1 == X_dst && X_w_enable) || (D_src1 == M_dst && M_w_enable) || (D_src1 == W_dst && W_w_enable))
-    {
-        // No need to stall if the value can be forwarded
-        if (val_a == 0)
-        {
-            // If val_a is zero (or another indicator of a failure to forward), we need to stall
-            stall = true;
-        }
-    }
-
-    if ((D_src2 == X_dst && X_w_enable) || (D_src2 == M_dst && M_w_enable) || (D_src2 == W_dst && W_w_enable))
-    {
-        // Repeat the check for the second source operand
-        if (val_b == 0)
-        {
-            // If val_b is zero (or another indicator of a failure to forward), we need to stall
-            stall = true;
-        }
-    }
-
-    // Stall pipeline if necessary
-    if (stall)
-    {
-        pipe_control_stage(S_FETCH, true, false);
-        pipe_control_stage(S_DECODE, true, false);
-    }
 
     return;
 }
