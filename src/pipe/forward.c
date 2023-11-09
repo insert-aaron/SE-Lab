@@ -17,54 +17,7 @@ comb_logic_t forward_reg(uint8_t D_src1, uint8_t D_src2, uint8_t X_dst, uint8_t 
                          bool M_w_enable, bool W_w_enable,
                          uint64_t *val_a, uint64_t *val_b){
 
-    if(W_w_enable){
-       if(D_src1 == W_dst){
-            if(W_wval_sel){
-               val_a = W_val_ex;
-            }
-            val_a = W_val_ex;
-
-       }
-
-       if(D_src2 == w_dst){
-        if(W_val_sel){
-            val_b = W_val_ex;
-        }
-        val_b = W_val_mem;
-       }
-    }
-
-
-    //Checking memory
-    if(W_w_enable){
-
-        if(D_src1 == M_dst){
-            if(M_wval_sel){
-                val_a = M_val_ex;
-            }else{
-                val_a = M_val_mem;
-            }
-        }
-
-        if(D_src2 == M_dst){
-            if(M_wval_sel){
-                val_b = M_val_ex;
-            }else{
-                val_b = M_val_mem;
-            }
-        }
-    }
-
-    //Checking execute
-    if(W_w_enable && !M_w_enable){
-        if(D_src1 == X_dst){
-            val_a = x_val_ex;
-        }
-
-        if(D_src2 == X_dst){
-            val_b = X_val_ex;
-        }
-    }
+   
     
     // if (X_w_enable)
     // {

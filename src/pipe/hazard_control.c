@@ -97,34 +97,60 @@ bool check_load_use_hazard(opcode_t D_opcode, uint8_t D_src1, uint8_t D_src2,
 comb_logic_t handle_hazards(opcode_t D_opcode, uint8_t D_src1, uint8_t D_src2,
                             opcode_t X_opcode, uint8_t X_dst, bool X_condval){
 
-    bool f_stall = F_out->status == STAT_HLT || F_out->status == STAT_INS;
-    pipe_control_stage(S_FETCH, false, f_stall);
-    pipe_control_stage(S_DECODE, false, false);
-    pipe_control_stage(S_EXECUTE, false, false);
-    pipe_control_stage(S_MEMORY, false, false);
-    pipe_control_stage(S_WBACK, false, false);
+    // bool f_stall = F_out->status == STAT_HLT || F_out->status == STAT_INS;
+    // pipe_control_stage(S_FETCH, false, f_stall);
+    // pipe_control_stage(S_DECODE, false, false);
+    // pipe_control_stage(S_EXECUTE, false, false);
+    // pipe_control_stage(S_MEMORY, false, false);
+    // pipe_control_stage(S_WBACK, false, false);
 
-    // Check for a return hazard
-    if(check_ret_hazard(D_opcode)){
-        // Stall Fetch and Decode, waiting for branch resolution
-        pipe_control_stage(S_FETCH, false, true);
-        pipe_control_stage(S_DECODE, false, true);
-        pipe_control_stage(S_EXECUTE, true, false);
-        pipe_control_stage(S_MEMORY, true, false);
-       
-    }else if (check_mispred_branch_hazard(X_opcode, X_condval)){
-        // Checking for Mispredicted Branch Hazard, bubble the stage
-        // affected by the misprediction
+    if(check_mispred_branch_hazard(X_opcode, X_condval) && check_ret_hazard(D_opcode)){
         pipe_control_stage(S_FETCH, true, false);
         pipe_control_stage(S_DECODE, true, false);
-        pipe_control_stage(S_EXECUTE, true, false);
+    }else if(check_ret_hazard(D_opcode) && check_load_use_hazard(D_opcode, D_src1, D_src2,X_opcode, d_st)){
+        pipe_control_stage(S_FETCH,false, true);
+        pipe_control_stage(S_DECODE, true, false);
+    }else if (check_ret_hazard(D_opcode)){
+        pipe_control_stage(S_FETCH, true, false);
     }else if (check_load_use_hazard(D_opcode, D_src1, D_src2, X_opcode, X_dst)){
-        // Check for load-use hazard
-        // Stall decode, waiting for the load to complete
+        pipe_control_stage(S_FETCH, false, true);
+        pipe_control_stage(S_DECODE, true, false);
+    }else if(check_mispred_branch_hazard(X_opcode, X_condval)){
+        pipe_control_stage(S_FETCH, true, false);
+        pipe_control_stage(S_DECODE, true, false)
+    }
+
+    if(dmem_status == IN_FLIGHT){
         pipe_control_stage(S_FETCH, false, true);
         pipe_control_stage(S_DECODE, false, true);
-        
+        pipe_control_stage(S_EXECUTE,false, true);
+        pipe_control_stage(S_MEMORY, false, true);
+        pipe_control_stage(S_WBACK, false, false);
     }
+
+    return;
+
+    // // Check for a return hazard
+    // if(check_ret_hazard(D_opcode)){
+    //     // Stall Fetch and Decode, waiting for branch resolution
+    //     pipe_control_stage(S_FETCH, false, true);
+    //     pipe_control_stage(S_DECODE, false, true);
+    //     pipe_control_stage(S_EXECUTE, true, false);
+    //     pipe_control_stage(S_MEMORY, true, false);
+       
+    // }else if (check_mispred_branch_hazard(X_opcode, X_condval)){
+    //     // Checking for Mispredicted Branch Hazard, bubble the stage
+    //     // affected by the misprediction
+    //     pipe_control_stage(S_FETCH, true, false);
+    //     pipe_control_stage(S_DECODE, true, false);
+    //     pipe_control_stage(S_EXECUTE, true, false);
+    // }else if (check_load_use_hazard(D_opcode, D_src1, D_src2, X_opcode, X_dst)){
+    //     // Check for load-use hazard
+    //     // Stall decode, waiting for the load to complete
+    //     pipe_control_stage(S_FETCH, false, true);
+    //     pipe_control_stage(S_DECODE, false, true);
+        
+    // }
 
     // if (W_out->status != STAT_AOK && W_out->status != STAT_BUB)
     // { // w out: f, d, x, w
