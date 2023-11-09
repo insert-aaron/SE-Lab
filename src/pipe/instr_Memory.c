@@ -1,10 +1,8 @@
 /**************************************************************************
  * C S 429 system emulator
- * 
+ *
  * instr_Memory.c - Memory stage of instruction processing pipeline.
  **************************************************************************/
-
-/* Code constructed by Aaron Alvarez (aa88379) and Ryan Passaro(rjp2827)*/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,26 +35,23 @@ extern comb_logic_t copy_w_ctl_sigs(w_ctl_sigs_t *, w_ctl_sigs_t *);
 
 comb_logic_t memory_instr(m_instr_impl_t *in, w_instr_impl_t *out)
 {
-    // Checking data memory read or write
-    if (in->M_sigs.dmem_read || in->M_sigs.dmem_write){
-        // Initialize flag to track potential data memory errors
-        bool x = 0;
-        // Perfrom data memory op , storing in val_mem
-        dmem(in->val_ex, in->val_b, in->M_sigs.dmem_read, in->M_sigs.dmem_write, &(out->val_mem), &(x));
-        // If data memory error, set address error
-        if (x){
-            in->status = STAT_ADR;
-        }
-    }
-
-    //copy fields from input to output instruction
-    out->status = in->status;
-    out->op = in->op;
-    out->print_op = in->print_op;
-    // copy write-back stage control signals from input to output
     copy_w_ctl_sigs(&(out->W_sigs), &(in->W_sigs));
-    out->val_ex = in->val_ex;
-    out->dst = in->dst;
+    bool x = 0;
 
+    if (in->M_sigs.dmem_read || in->M_sigs.dmem_write)
+    {
+        dmem(in->val_ex, in->val_b, in->M_sigs.dmem_read,
+             in->M_sigs.dmem_read, &(out->val_mem), &x);
+    }
+    out->dst = in->dst;
+    out->val_ex = in->val_ex;
+    out->val_b = in->val_b;
+    out->status = in->status;
+    out->print_op = in->print->print_op;
+
+    if (x)
+    {
+        out->status = STAT_ADR;
+    }
     return;
 }
