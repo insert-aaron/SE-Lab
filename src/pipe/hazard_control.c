@@ -107,7 +107,7 @@ comb_logic_t handle_hazards(opcode_t D_opcode, uint8_t D_src1, uint8_t D_src2,
     if(check_mispred_branch_hazard(X_opcode, X_condval) && check_ret_hazard(D_opcode)){
         pipe_control_stage(S_FETCH, true, false);
         pipe_control_stage(S_DECODE, true, false);
-    }else if(check_ret_hazard(D_opcode) && check_load_use_hazard(D_opcode, D_src1, D_src2,X_opcode, d_st)){
+    }else if(check_ret_hazard(D_opcode) && check_load_use_hazard(D_opcode, D_src1, D_src2,X_opcode, X_dst)){
         pipe_control_stage(S_FETCH,false, true);
         pipe_control_stage(S_DECODE, true, false);
     }else if (check_ret_hazard(D_opcode)){
@@ -117,7 +117,7 @@ comb_logic_t handle_hazards(opcode_t D_opcode, uint8_t D_src1, uint8_t D_src2,
         pipe_control_stage(S_DECODE, true, false);
     }else if(check_mispred_branch_hazard(X_opcode, X_condval)){
         pipe_control_stage(S_FETCH, true, false);
-        pipe_control_stage(S_DECODE, true, false)
+        pipe_control_stage(S_DECODE, true, false);
     }
 
     if(dmem_status == IN_FLIGHT){
