@@ -100,9 +100,7 @@ comb_logic_t handle_hazards(opcode_t D_opcode, uint8_t D_src1, uint8_t D_src2,
 
     uint64_t *val_a, *val_b;
 
-    forward_reg(D_src1, D_src2, X_dst, M_dst, W_dst, X_val_ex, M_val_ex, M_val_mem,
-                W_val_ex, W_val_mem, M_wval_sel, W_wval_sel, X_w_enable,
-                M_w_enable, W_w_enable, &val_a, &val_b);
+
 
     pipe_control_stage(S_FETCH,false, false);
     pipe_control_stage(S_DECODE, false, false);
