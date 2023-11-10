@@ -202,7 +202,26 @@ comb_logic_t handle_hazards(opcode_t D_opcode, uint8_t D_src1, uint8_t D_src2,
         pipe_control_stage(S_MEMORY, false, false);
         pipe_control_stage(S_WBACK, false, false);
 
-        if (W_out->status != STAT_AOK && W_out->status != STAT_BUB)
+        if (F_out->status != STAT_AOK && F_out->status != STAT_BUB)
+        {
+            pipe_control_stage(S_FETCH, false, true);
+        }else if (D_out->status != STAT_AOK && D_out->status != STAT_BUB){
+            X_in->W_sigs.w_enable = false;
+            pipe_control_stage(S_FETCH, false, true);
+            pipe_control_stage(S_DECODE, false, true);
+        }else if (X_out->status != STAT_AOK && X_out->status != STAT_BUB)
+        { // x out: f, d, x
+            pipe_control_stage(S_FETCH, false, true);
+            pipe_control_stage(S_DECODE, false, true);
+            pipe_control_stage(S_EXECUTE, false, true);
+        }else if (M_out->status != STAT_AOK && M_out->status != STAT_BUB)
+        { // m out: f, d, x, m; same as W->in
+            X_in->X_sigs.set_CC = false;
+            pipe_control_stage(S_FETCH, false, true);
+            pipe_control_stage(S_DECODE, false, true);
+            pipe_control_stage(S_EXECUTE, false, true);
+            pipe_control_stage(S_MEMORY, false, true);
+        }else if (W_out->status != STAT_AOK && W_out->status != STAT_BUB)
         { // w out: f, d, x, w
             pipe_control_stage(S_FETCH, false, true);
             pipe_control_stage(S_DECODE, false, true);
@@ -210,30 +229,7 @@ comb_logic_t handle_hazards(opcode_t D_opcode, uint8_t D_src1, uint8_t D_src2,
             pipe_control_stage(S_MEMORY, false, true);
             pipe_control_stage(S_WBACK, false, true);
         }
-        if (M_out->status != STAT_AOK && M_out->status != STAT_BUB)
-        { // m out: f, d, x, m; same as W->in
-            X_in->X_sigs.set_CC = false;
-            pipe_control_stage(S_FETCH, false, true);
-            pipe_control_stage(S_DECODE, false, true);
-            pipe_control_stage(S_EXECUTE, false, true);
-            pipe_control_stage(S_MEMORY, false, true);
-        }
-        if (X_out->status != STAT_AOK && X_out->status != STAT_BUB)
-        { // x out: f, d, x
-            pipe_control_stage(S_FETCH, false, true);
-            pipe_control_stage(S_DECODE, false, true);
-            pipe_control_stage(S_EXECUTE, false, true);
-        }
-        if (D_out->status != STAT_AOK && D_out->status != STAT_BUB)
-        {
-            X_in->W_sigs.w_enable = false;
-            pipe_control_stage(S_FETCH, false, true);
-            pipe_control_stage(S_DECODE, false, true);
-        }
-        if (F_out->status != STAT_AOK && F_out->status != STAT_BUB)
-        {
-            pipe_control_stage(S_FETCH, false, true);
-        }
+       
 
         if (dmem_status == IN_FLIGHT)
         {
