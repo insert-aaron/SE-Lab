@@ -12,66 +12,48 @@ comb_logic_t forward_reg(uint8_t D_src1, uint8_t D_src2, uint8_t X_dst, uint8_t 
                          uint64_t X_val_ex, uint64_t M_val_ex, uint64_t M_val_mem, uint64_t W_val_ex,
                          uint64_t W_val_mem, bool M_wval_sel, bool W_wval_sel, uint64_t *val_a, uint64_t *val_b)
 {
-    // checks writeback
-    if (guest.proc->w_insn->in->W_sigs.w_enable)
-    {
-
-        if (D_src1 == W_dst)
-        {
-            if (W_wval_sel)
-            {
-                if (guest.proc->w_insn->in->W_sigs.dst_sel)
-                {
-                    *val_a = guest.proc->w_insn->in->seq_succ_PC;
-                }
-                else *val_a = W_val_ex;
-            }
-            else *val_a = W_val_mem;
+   if(W_w_enable){
+        if(W_dst == D_src1) {
+            *val_a = W_val_ex; 
+        } 
+        if(W_dst == D_src2) {
+            *val_b = W_val_ex;
         }
-
-        if (D_src2 == W_dst)
-        {
-            if (W_wval_sel)
-            {
-                *val_b = W_val_ex;
-            }
-            else *val_b = W_val_mem;
-        }
-    }
-
-    // checks memory
-    if (guest.proc->m_insn->in->W_sigs.w_enable)
-    {
-
-        if (D_src1 == M_dst)
-        {
-            if (M_wval_sel)
-            {
-                *val_a = M_val_ex;
-            }
-            else *val_a = M_val_mem;
-        }
-
-        if (D_src2 == M_dst)
-        {
-            if (M_wval_sel)
-            {
-                *val_b = M_val_ex;
-            }
-            else *val_b = M_val_mem;
-        }
-    }
-
-    // checks execute
-    if (guest.proc->x_insn->in->W_sigs.w_enable && !guest.proc->x_insn->in->M_sigs.dmem_read)
-    {
-        if (D_src1 == X_dst)
-        {
-            *val_a = X_val_ex;
-        }
-
-        if (D_src2 == X_dst)
-        {
+    } 
+    if(M_w_enable){
+        if(M_dst == D_src1) { 
+            *val_a = M_val_ex; 
+        } 
+        if(M_dst == D_src2) {
+            *val_b = M_val_ex;
+        } 
+    } 
+    if(X_w_enable){
+        if(X_dst == D_src1) { //x dest = dx
+            *val_a = X_val_ex; //val_A = M_in->val_a && vx = X_val_ex
+        } //don't need an else cuz regval_a = val_a
+        if(X_dst == D_src2) {
             *val_b = X_val_ex;
+        } //don't need an else cuz regval_b = val_b
+    } 
+
+    //load-use hazards 
+    if(W_wval_sel){
+        if(W_dst == D_src1) {
+            *val_a = W_val_mem; 
+        } 
+        if(W_dst == D_src2) {
+            *val_b = W_val_mem;
         }
-    }
+    } 
+    if(M_wval_sel){
+        if(M_dst == D_src1) { 
+            *val_a = M_val_mem; 
+        } 
+        if(M_dst == D_src2) {
+            *val_b = M_val_mem;
+        } 
+    } 
+    
+    return;
+}
