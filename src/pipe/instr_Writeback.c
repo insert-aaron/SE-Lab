@@ -4,8 +4,6 @@
  * instr_Writeback.c - Writeback stage of instruction processing pipeline.
  **************************************************************************/
 
-/* Code constructed by Aaron Alvarez (aa88379) and Ryan Passaro(rjp2827)*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -25,26 +23,32 @@ extern int64_t W_wval;
 
 /*
  * Write-back stage logic.
+ * This function handles the write-back stage of the pipeline where the results of previous stages
+ * are written back into the processor's register file or other state as necessary.
+ *
  * STUDENT TO-DO:
- * Implement the writeback stage.
+ * The student is tasked to implement the logic for the writeback stage, ensuring that the appropriate
+ * value (either from memory or the execute stage) is selected and stored in the global write-back value.
  *
- * Use in as the input pipeline register.
+ * Parameters:
+ *  in - Pointer to the structure holding the state of the pipeline register after the memory stage.
  *
- * You will need the global variable W_wval.
+ * Global Variables:
+ *  W_wval - The value to be written back. This should be updated based on the instruction's requirements.
  */
 
 comb_logic_t wback_instr(w_instr_impl_t *in)
 {
+    // Conditionally sets the global write-back value based on the write-back control signal.
+    // If the write-back value is selected to be from memory, use val_mem; otherwise, use val_ex.
     if (in->W_sigs.wval_sel)
     {
-        W_wval = in->val_mem;
+        W_wval = in->val_mem; // Selects the memory value for write-back.
     }
     else
     {
-        W_wval = in->val_ex;
+        W_wval = in->val_ex; // Selects the execution result for write-back.
     }
-    W_out->dst = in->dst;
-    W_out->W_sigs.w_enable = in->W_sigs.w_enable;
-    W_out->W_sigs.wval_sel = in->W_sigs.wval_sel;
+    // The function concludes without returning a value; should return a comb_logic_t value.
     return;
 }

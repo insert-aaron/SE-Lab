@@ -4,70 +4,73 @@
  * instr_Execute.c - Execute stage of instruction processing pipeline.
  **************************************************************************/
 
-/* Code constructed by Aaron Alvarez (aa88379) and Ryan Passaro(rjp2827)*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
 #include <assert.h>
-#include "err_handler.h"
-#include "instr.h"
-#include "instr_pipeline.h"
-#include "machine.h"
-#include "hw_elts.h"
+#include "err_handler.h"    // Header for error handling related definitions
+#include "instr.h"          // Header for instruction related definitions
+#include "instr_pipeline.h" // Header for instruction pipeline structures
+#include "machine.h"        // Header for machine state definition
+#include "hw_elts.h"        // Header for hardware elements and helper functions
 
-extern machine_t guest;
-extern mem_status_t dmem_status;
+// Declaration of external global variables which are defined in other source files.
+extern machine_t guest;          // Represents the state of the emulated machine.
+extern mem_status_t dmem_status; // Represents the status of the data memory.
 
-extern bool X_condval;
+extern bool X_condval; // External boolean to hold the result of condition code evaluation.
 
+// Declarations of external functions to copy control signals between pipeline stages.
 extern comb_logic_t copy_m_ctl_sigs(m_ctl_sigs_t *, m_ctl_sigs_t *);
 extern comb_logic_t copy_w_ctl_sigs(w_ctl_sigs_t *, w_ctl_sigs_t *);
 
 /*
  * Execute stage logic.
- * STUDENT TO-DO:
- * Implement the execute stage.
+ * This function is responsible for handling the execution stage of the
+ * instruction pipeline, where ALU operations are performed and control
+ * signals for subsequent pipeline stages are set.
  *
- * Use in as the input pipeline register,
- * and update the out pipeline register as output.
+ * Parameters:
+ *  in - Pointer to the structure holding the input pipeline register state.
+ *  out - Pointer to the structure where the output pipeline register state should be stored.
  *
- * You will need the following helper functions:
- * copy_m_ctl_signals, copy_w_ctl_signals, and alu.
+ * The input structure contains the instruction and associated control signals after
+ * the decode stage, while the output structure represents the state going into the memory stage.
  */
 
 comb_logic_t execute_instr(x_instr_impl_t *in, m_instr_impl_t *out)
 {
-    // Copy the memory stage control signals from the input instruction (in) to the output instruction (out)
+    // Copying decoded instruction details to the output register
+    out->status = in->status;           // Status from the decode stage to pass through.
+    out->print_op = in->print_op;       // The operation to print (for debugging or logging).
+    out->seq_succ_PC = in->seq_succ_PC; // The sequential successor to the program counter.
+
+    // Copy control signals for the Memory stage from the input to output pipeline register.
     copy_m_ctl_sigs(&(out->M_sigs), &(in->M_sigs));
-    // Copy the write-back stage control signals from the input instruction (in) to the output instruction (out)
+    // Copy control signals for the Write-Back stage from the input to output pipeline register.
     copy_w_ctl_sigs(&(out->W_sigs), &(in->W_sigs));
-    // Initialize a variable val_B to hold the value for the second operand of the ALU operation
-    uint64_t val_B;
-    // Check if valb_sel is set in control signals or if the opcode is OP_MVN
-    if (in->X_sigs.valb_sel || in->op == OP_MVN)
+
+    out->val_b = in->val_b; // Value of operand B from the decode stage.
+    out->op = in->op;       // The operation code to be executed.
+
+    // Select the appropriate value for the second ALU operand.
+    uint64_t v = in->X_sigs.valb_sel ? in->val_b : in->val_imm;
+
+    // If the operation is a branch-and-link (BL), use the sequential PC as val_a.
+    if (in->op == OP_BL)
     {
-        // If true, use the value from register val_b as the second operand
-        val_B = in->val_b;
+        in->val_a = in->seq_succ_PC;
     }
-    else
-    {
-        // Otherwise, use the immediate value (val_imm) as the second operand
-        val_B = in->val_imm;
-    }
-    // Store the result in val_ex and the condition flag in X_condval
-    alu(in->val_a, val_B, in->val_hw, in->ALU_op, in->X_sigs.set_CC, in->cond, &(out->val_ex), &(X_condval));
-    // Copy some fields from the input instruction (in) to the output instruction (out)
-    out->print_op = in->print_op;
-    out->op = in->op;
-    out->val_b = in->val_b;
-    out->seq_succ_PC = in->seq_succ_PC;
-    out->dst = in->dst;
-    out->status = in->status;
-    out->dst = in->dst;
-    out->W_sigs.w_enable = in->W_sigs.w_enable;
-    out->cond_holds = X_condval;
+
+    // Perform the ALU operation, passing in values and control signals, and capturing the result.
+    alu(in->val_a, v, in->val_hw, in->ALU_op, in->X_sigs.set_CC, in->cond, &(out->val_ex), &(X_condval));
+
+    // Capture whether the condition for the ALU operation holds.
+    out->cond_holds = X_condval; // The result of the condition code evaluation.
+    out->dst = in->dst;          // The destination register for the ALU result.
+
+    // Function ends without returning a value, despite its non-void return type.
     return;
 }
