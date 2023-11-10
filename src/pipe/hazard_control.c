@@ -133,6 +133,14 @@ comb_logic_t handle_hazards(opcode_t D_opcode, uint8_t D_src1, uint8_t D_src2,
         pipe_control_stage(S_WBACK, false, true);
     }
 
+    if (dmem_status == IN_FLIGHT)
+    {
+        pipe_control_stage(S_FETCH, false, true);
+        pipe_control_stage(S_DECODE, false, true);
+        pipe_control_stage(S_EXECUTE, false, true);
+        pipe_control_stage(S_MEMORY, false, true);
+        pipe_control_stage(S_WBACK, false, false);
+    }
 
     if (check_mispred_branch_hazard(X_opcode, X_condval) 
             && check_ret_hazard(D_opcode)){
@@ -145,7 +153,7 @@ comb_logic_t handle_hazards(opcode_t D_opcode, uint8_t D_src1, uint8_t D_src2,
     }
     else if (check_ret_hazard(D_opcode))
     {
-        pipe_control_stage(S_FETCH, false, false);
+        pipe_control_stage(S_FETCH, true, false);
         pipe_control_stage(S_DECODE, true, false);
         pipe_control_stage(S_EXECUTE, false, false);
         pipe_control_stage(S_MEMORY, false, false);
@@ -153,28 +161,21 @@ comb_logic_t handle_hazards(opcode_t D_opcode, uint8_t D_src1, uint8_t D_src2,
     }
     else if (check_load_use_hazard(D_opcode, D_src1, D_src2, X_opcode, X_dst))
     {
-        pipe_control_stage(S_FETCH, false, true);
-        pipe_control_stage(S_DECODE, false, true);
+        pipe_control_stage(S_FETCH, true, true);
+        pipe_control_stage(S_DECODE, true, true);
         pipe_control_stage(S_EXECUTE, true, false);
         pipe_control_stage(S_MEMORY, false, false);
         pipe_control_stage(S_WBACK, false, false);
     }
     else if (check_mispred_branch_hazard(X_opcode, X_condval))
     {
-        pipe_control_stage(S_FETCH, false, false);
+        pipe_control_stage(S_FETCH, true, false);
         pipe_control_stage(S_DECODE, true, false);
         pipe_control_stage(S_EXECUTE, true, false);
         pipe_control_stage(S_MEMORY, false, false);
         pipe_control_stage(S_WBACK, false, false);
     }
 
-    if (dmem_status == IN_FLIGHT)
-    {
-        pipe_control_stage(S_FETCH, false, true);
-        pipe_control_stage(S_DECODE, false, true);
-        pipe_control_stage(S_EXECUTE, false, true);
-        pipe_control_stage(S_MEMORY, false, true);
-        pipe_control_stage(S_WBACK, false, false);
-    }
+  
 }
 
